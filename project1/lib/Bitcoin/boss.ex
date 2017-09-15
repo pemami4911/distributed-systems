@@ -31,7 +31,7 @@ defmodule Bitcoin.Boss do
         IO.puts("Connecting to #{server} from #{Node.self}")
         Node.set_cookie(:"pemami")
         
-        case Node.connect(server) do
+        case Node.connect(String.to_atom(server)) do
           true -> :ok
           reason ->
             IO.puts "Could not connect to #{server}, reason: #{reason}"
