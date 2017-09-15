@@ -7,6 +7,7 @@ defmodule Bitcoin.Mixfile do
       version: "0.1.0",
       elixir: "~> 1.5",
       start_permanent: Mix.env == :prod,
+      escript: [main_module: Bitcoin.CLI],
       deps: deps()
     ]
   end
@@ -14,7 +15,7 @@ defmodule Bitcoin.Mixfile do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      mod: {Bitcoin, [k: 5, workers: :all]},
+      #mod: {Bitcoin.CLI, [k: 4]},
       extra_applications: [:logger, :crypto]
     ]
   end

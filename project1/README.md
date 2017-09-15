@@ -6,9 +6,16 @@ as the target: pemami$;234kxlq
 
 The output are the Bitcoins with the corresponding number (or less) of leading 0's. 
 
+## Leaderboard
+
+| # of leading zeros | String | Hash | 
+| --- | --- | --- |
+| 8 | pemami'A;rl)N7 | 000000001E450E87A534729604E28AEE0E855BFC8D08557FBDF72174A88E8D06 | 
+| 7 | pemami(<Ttyuf | 0000000C6A2DBB3FE5193B6455EFCE8CD44765729AB286E417B95048A6AB828E |
+
 ## Implementation 
 
-This can be done with a Supervisor and GenServer. A server should be able to do the mining without any workers, but should be able to accomodate workers when available. 
+This can be done with a Supervisor and Tasks. 
  
 ## Installation
 

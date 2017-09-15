@@ -11,19 +11,19 @@ defmodule Bitcoin.Miner do
     and exits.
   """
   def search(opts) do
-    search("pemami", opts, nil, "")  
+    search("pemami", opts)  
   end
 
-  def search(gatorlink, opts, status, _outs) when status != :ok do
+  def search(gatorlink, opts) do
     # construct the new string to test
     # should be valid
     full_string = gatorlink <> to_string(Enum.take_random(33..126, opts[:chars]))
-    {status_, outs_} = check_hash(full_string, opts[:k])
-    search(gatorlink, opts, status_, full_string <> "\t" <> outs_)     
-  end
-
-  def search(_gatorlink, _opts, _status, outs) do
-    IO.puts(outs)            
+    {status, outs} = check_hash(full_string, opts[:k])
+    res = full_string <> "\t" <> outs
+    if status == :ok do
+      IO.puts(res)
+    end
+    search(gatorlink, opts)     
   end
 
   defp check_hash(string, k) do
