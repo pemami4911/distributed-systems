@@ -12,7 +12,7 @@ defmodule Bitcoin.Boss do
       # This is the server node
       workers = if not List.keymember?(opts, :server, 0) do
         # Set the node name and cookie
-        fname = :"server@10.245.36.29"
+        fname = :"server@10.136.196.158"
         Node.start(fname, :longnames)
         Node.set_cookie(:"pemami")
         IO.puts "Starting #{fname}. Listening for new workers."
@@ -25,7 +25,7 @@ defmodule Bitcoin.Boss do
         workers ++ [Supervisor.child_spec({Bitcoin.Foreman, n}, id: n+1)]
       # This is a remote worker node
       else
-        fname = :"worker@10.136.196.158"
+        fname = :"worker@10.245.36.29"
         Node.start(fname, :longnames)
         server = "server@" <> opts[:server]
         # Connect to the server
@@ -40,9 +40,10 @@ defmodule Bitcoin.Boss do
         end
         
         n = System.schedulers_online()
+        
+        work_unit = Bitcoin.RemoteForeman.start_link([n: n, server: server])
         # Request work from the Foreman
-        work_unit = GenServer.call({:foreman, server}, {:request_work, n})
-        IO.puts(work_unit)
+        IO.inspect work_unit
         build_workers([], work_unit, opts)
       end
 
