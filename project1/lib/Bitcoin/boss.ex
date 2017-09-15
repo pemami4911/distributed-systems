@@ -13,8 +13,9 @@ defmodule Bitcoin.Boss do
       workers = if not List.keymember?(opts, :server, 0) do
         # Set the node name and cookie
         fname = :"server@10.245.36.29"
-        res = Node.start(fname, :longnames)
+        Node.start(fname, :longnames)
         Node.set_cookie(:"pemami")
+        IO.puts "Starting #{fname}. Listening for new workers."
 
         # start workers
         n = System.schedulers_online()
