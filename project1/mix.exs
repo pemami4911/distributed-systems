@@ -15,7 +15,6 @@ defmodule Bitcoin.Mixfile do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      #mod: {Bitcoin.CLI, [k: 4]},
       extra_applications: [:logger, :crypto]
     ]
   end

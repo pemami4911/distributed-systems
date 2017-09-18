@@ -5,20 +5,25 @@ defmodule Bitcoin.Foreman do
   """
   use GenServer
   
-  def start_link(cores) do
-    GenServer.start_link(__MODULE__, cores, [:name, :foreman])
+  def start_link(args) do
+    GenServer.start_link(__MODULE__, args, [{:name, Bitcoin.Foreman}])
   end
 
   @doc """
     Maintains a map of the units of work being done by different workers 
   """
-  def init(cores) do
-    {:ok, %{n: cores}}
+  def init(args) do
+    {:ok, args}
   end
 
-  def handle_call({:request_work, cores}, _from, work_units) do
-    n = work_units[:n] + cores
-    {:reply, n, %{n: n}}
+  def handle_call({:request_work, cores}, _from, state) do
+    resp = [{:n, state[:n] + cores}, {:k, state[:k]}]
+    {:reply, resp, resp}
+  end
+
+  def handle_cast({:found_coin, coin}, state) do
+    IO.puts(coin)
+    {:noreply, state}
   end
 
 end

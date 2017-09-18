@@ -12,26 +12,31 @@ defmodule Bitcoin.Boss do
       # This is the server node
       workers = if not List.keymember?(opts, :server, 0) do
         # Set the node name and cookie
-        fname = :"server@10.136.196.158"
-        Node.start(fname, :longnames)
+        #fname = :"server@10.136.196.158"
+        my_name = "server@" <> opts[:ip] |> String.to_atom
+        Node.start(my_name)
         Node.set_cookie(:"pemami")
-        IO.puts "Starting #{fname}. Listening for new workers."
+        IO.puts "Starting server at #{Node.self}. Listening for new workers."
 
         # start workers
         n = System.schedulers_online()
+        opts_ = opts ++ [foreman: Bitcoin.Foreman]
 
-        workers = build_workers([], n, opts)
+        workers = build_workers([], n, opts_)
+        args = [{:n, n}, {:k, opts_[:k]}]
         # start the "foreman"
-        workers ++ [Supervisor.child_spec({Bitcoin.Foreman, n}, id: n+1)]
+        workers ++ [Supervisor.child_spec({Bitcoin.Foreman, args}, id: n+1)]
       # This is a remote worker node
       else
-        Node.start(:"worker@192.168.1.41")
-        server = "server@" <> opts[:server]
+        my_name = "worker@" <> opts[:ip] |> String.to_atom
+        server = "server@" <> opts[:server] |> String.to_atom
+        
+        Node.start(my_name)
         # Connect to the server
-        IO.puts("Connecting to #{server} from #{Node.self}")
+        IO.puts("Connecting to server from #{Node.self}")
         Node.set_cookie(:"pemami")
         
-        foreman = case Node.connect(String.to_atom(server)) do
+        foreman = case Node.connect(server) do
           true ->
             :global.sync()
             :global.whereis_name(:foreman)
@@ -42,13 +47,13 @@ defmodule Bitcoin.Boss do
           
         n = System.schedulers_online()
         
-        Bitcoin.RemoteForeman.start_link([])
-        work_unit = Bitcoin.RemoteForeman.request_work(foreman, n)
+        resp = Bitcoin.RemoteForeman.request_work(foreman, n)
         # Request work from the Foreman
-        IO.inspect work_unit
-        build_workers([], work_unit, opts)
-      end
+        IO.inspect resp
 
+        opts_ = opts ++ [foreman: :remote_foreman]
+        build_workers([], resp[:n], opts_)
+      end
       Supervisor.init(workers, strategy: :one_for_one)
     end 
 
