@@ -18,9 +18,10 @@ defmodule Bitcoin.Foreman do
 
   def handle_call({:request_work, cores, node_name}, _from, state) do
     IO.puts("registering new worker #{to_string(node_name)}")
+
     resp = [{:n, state[:n] + cores}, {:k, state[:k]}]
-    workers = Bitcoin.Boss.build_workers([], resp[:n], resp)
-    Node.spawn_link(node_name, Bitcoin.Worker.start_link([workers]))
+    workers = Bitcoin.Boss.build_workers([], resp[:n], state[:n], resp)
+    Node.spawn_link(node_name, Bitcoin.Worker, :start_link, [workers])
     {:reply, true, resp}
   end
 

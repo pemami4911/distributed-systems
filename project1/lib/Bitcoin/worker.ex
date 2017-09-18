@@ -1,6 +1,14 @@
 defmodule Bitcoin.Worker do
   use Supervisor
 
+  def run(miners) do
+    _pid = start_link(miners)
+    receive do
+      { :until_death } ->
+      System.halt(0)
+    end
+  end
+
   def start_link(miners) do
     Supervisor.start_link(__MODULE__, miners, name: __MODULE__)
   end
