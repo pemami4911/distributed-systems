@@ -10,7 +10,7 @@ defmodule Bitcoin.CLI do
         System.halt(0)
       end
     else
-      Bitcoin.Worker.connect(opts)
+      Bitcoin.Remote.connect(opts)
     end
   end
 

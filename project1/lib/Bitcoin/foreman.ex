@@ -21,7 +21,7 @@ defmodule Bitcoin.Foreman do
 
     resp = [{:n, state[:n] + cores}, {:k, state[:k]}]
     workers = Bitcoin.Boss.build_workers([], resp[:n], state[:n], resp)
-    Node.spawn_link(node_name, Bitcoin.Worker, :start_link, [workers])
+    Node.spawn_link(node_name, Bitcoin.Remote, :run, [workers])
     {:reply, true, resp}
   end
 
