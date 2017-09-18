@@ -39,7 +39,7 @@ defmodule Bitcoin.Boss do
         foreman = case Node.connect(server) do
           true ->
             :global.sync()
-            :global.whereis_name(:foreman)
+            :global.whereis_name(Bitcoin.Foreman)
           reason ->
             IO.puts "Could not connect to #{server}, reason: #{reason}"
             System.halt(0)

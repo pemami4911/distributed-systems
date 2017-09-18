@@ -6,7 +6,7 @@ defmodule Bitcoin.Foreman do
   use GenServer
   
   def start_link(args) do
-    GenServer.start_link(__MODULE__, args, [{:name, Bitcoin.Foreman}])
+    GenServer.start_link(__MODULE__, args, [{:name, {:global, Bitcoin.Foreman}}])
   end
 
   @doc """

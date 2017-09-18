@@ -12,7 +12,7 @@ defmodule Bitcoin.RemoteForeman do
   # CLIENT API
 
   def request_work(foreman, n) do
-    GenServer.call(foreman, {:request_work, n})
+    GenServer.call({:global, foreman}, {:request_work, n})
   end    
 
 end
