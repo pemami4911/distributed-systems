@@ -9,8 +9,11 @@ defmodule Bitcoin.Remote do
   end
 
   def connect(opts) do
-    my_name = "worker@" <> opts[:ip] |> String.to_atom
-    server = "server@" <> opts[:server] |> String.to_atom
+    my_name = "worker@" <> opts[:ip] 
+        |> String.to_atom
+
+    server = "server@" <> opts[:server] 
+        |> String.to_atom
     
     Node.start(my_name)
     # Connect to the server
@@ -29,8 +32,7 @@ defmodule Bitcoin.Remote do
     n = System.schedulers_online()
     
     case GenServer.call({:global, Bitcoin.Foreman}, {:request_work, n, my_name}) do
-      true ->
-        IO.puts("starting workers!")
+      true -> :ok
       reason ->
         IO.puts "Could not start workers, reason: #{reason}"
         System.halt(0)
