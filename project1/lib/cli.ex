@@ -3,7 +3,11 @@ defmodule Bitcoin.CLI do
 
   def main(args) do
     {opts,_,_} = OptionParser.parse(args, switches: [k: :integer, server: :string, ip: :string])
-    Bitcoin.Boss.start_link(opts)
+    if not List.keymember?(opts, :server, 0) do
+      Bitcoin.Boss.start_link(opts)
+    else
+      Bitcoin.Worker.connect(opts)
+    end
     receive do
       { :until_death } ->
         System.halt(0)

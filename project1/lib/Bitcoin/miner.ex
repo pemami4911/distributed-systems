@@ -21,7 +21,7 @@ defmodule Bitcoin.Miner do
     {status, outs} = check_hash(full_string, opts[:k])
     res = full_string <> "\t" <> outs
     if status == :ok do
-      GenServer.cast({:global, opts[:foreman]}, {:found_coin, res})
+      GenServer.cast({:global, Bitcoin.Foreman}, {:found_coin, res})
     end
     search(gatorlink, opts)     
   end
