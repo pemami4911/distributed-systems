@@ -25,29 +25,30 @@ defmodule Bitcoin.Boss do
         workers ++ [Supervisor.child_spec({Bitcoin.Foreman, n}, id: n+1)]
       # This is a remote worker node
       else
-        fname = :"worker@10.245.36.29"
-        Node.start(fname, :longnames)
+        Node.start(:"worker@192.168.1.41")
         server = "server@" <> opts[:server]
         # Connect to the server
         IO.puts("Connecting to #{server} from #{Node.self}")
         Node.set_cookie(:"pemami")
         
-        case Node.connect(String.to_atom(server)) do
-          true -> :ok
+        foreman = case Node.connect(String.to_atom(server)) do
+          true ->
+            :global.sync()
+            :global.whereis_name(:foreman)
           reason ->
             IO.puts "Could not connect to #{server}, reason: #{reason}"
             System.halt(0)
         end
-        
+          
         n = System.schedulers_online()
         
-        work_unit = Bitcoin.RemoteForeman.start_link([n: n, server: server])
+        Bitcoin.RemoteForeman.start_link([])
+        work_unit = Bitcoin.RemoteForeman.request_work(foreman, n)
         # Request work from the Foreman
         IO.inspect work_unit
         build_workers([], work_unit, opts)
       end
 
-      
       Supervisor.init(workers, strategy: :one_for_one)
     end 
 

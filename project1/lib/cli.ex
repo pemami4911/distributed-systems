@@ -3,7 +3,6 @@ defmodule Bitcoin.CLI do
 
   def main(args) do
     {opts,_,_} = OptionParser.parse(args, switches: [k: :integer, server: :string])
-    IO.inspect(opts)
     Bitcoin.Boss.start_link(opts)
     receive do
       { :until_death } ->

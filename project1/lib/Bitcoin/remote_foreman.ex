@@ -1,11 +1,15 @@
 defmodule Bitcoin.RemoteForeman do
   use GenServer
 
-  def start_link(opts) do
-    GenServer.start_link(__MODULE__, opts, [name: :remote_foreman])
+  def start_link([]) do
+    GenServer.start_link(__MODULE__, [], [{:name, {:global, :remote_foreman}}])
   end
 
-  def init(opts) do
-    GenServer.call({:foreman, String.to_atom(opts[:server])}, {:request_work, opts[:n]})
+  def init([]) do
+    {:ok, %{}}
   end
+
+  def request_work(foreman, n) do
+    GenServer.call(foreman, {:request_work, n})
+  end    
 end
