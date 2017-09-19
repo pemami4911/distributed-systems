@@ -22,19 +22,19 @@ defmodule Bitcoin.Boss do
       workers = build_workers([], n, 1, opts)
       args = [{:n, n}, {:k, opts[:k]}]
       # start the "foreman"
-      workers_ = workers ++ [Supervisor.child_spec({Bitcoin.Foreman, args}, id: n+1)]
+      workers_ = workers ++ [Supervisor.child_spec({Bitcoin.Foreman, args}, id: -1)]
       Supervisor.init(workers_, strategy: :one_for_one)
     end 
 
     def build_workers(workers, n, last, opts) when n > last do
       opts_ = opts ++ [chars: n + 5]
-      workers = workers ++ [Supervisor.child_spec({Bitcoin.Miner, opts_}, id: n)]
+      workers = workers ++ [Supervisor.child_spec({Bitcoin.Miner, opts_}, id: n+5)]
       build_workers(workers, n - 1, last, opts)
     end
 
     def build_workers(workers, n, _last, opts) do
       opts_ = opts ++ [chars: n + 5]
-      workers ++ [Supervisor.child_spec({Bitcoin.Miner, opts_}, id: n)]      
+      workers ++ [Supervisor.child_spec({Bitcoin.Miner, opts_}, id: n+5)]      
     end
 
   end
