@@ -11,15 +11,15 @@ The output are the Bitcoins with the corresponding number (or less) of leading 0
 
 Build the project with
 
-    `mix escript.build`
+    mix escript.build
 
 To start the server node, run 
 
-    `./project1 --k 4 --ip #YOUR_IP_ADDRESS#`
+    ./project1 --k 4 --ip #YOUR_IP_ADDRESS#
 
 To add a worker node, run
 
-    `./project1 --server #SERVER_IP_ADDRESS# --ip #YOUR_IP_ADDRESS#`
+    ./project1 --server #SERVER_IP_ADDRESS# --ip #YOUR_IP_ADDRESS#
 
 ## Leaderboard
 
@@ -28,7 +28,7 @@ To add a worker node, run
 | 8 | pemami'A;rl)N7 | 000000001E450E87A534729604E28AEE0E855BFC8D08557FBDF72174A88E8D06 | 
 | 7 | pemami(<Ttyuf | 0000000C6A2DBB3FE5193B6455EFCE8CD44765729AB286E417B95048A6AB828E |
 
-#### Most machines I tested with
+### Most machines I tested with
 
 3 machines (4 cores, 4 cores, and 8 cores)
 
