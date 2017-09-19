@@ -1,3 +1,7 @@
+# Group
+
+* Patrick Emami [70923125]
+
 # Bitcoin
 
 The goal of this project is to create a distributed Bitcoin mining system. A supervisor creates tasks for workers to search for Bitcoins.
@@ -67,7 +71,7 @@ pemamicYGdx3    0000618EFB5B004E3B6AD2B32151CF81F190C54127CE564DED31D69638AD1F64
 pemamiA:I[}>m   000016635CF916DC3A0F832298A8BD1B43906873B7560F98A216D5B39EEB7185
 ```
  
-#### Example Timing
+#### Example Timing with 4 cores
 
 * real: 39m32.269s
 * user: 152m58.596s
