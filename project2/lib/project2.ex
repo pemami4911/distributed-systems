@@ -1,6 +1,6 @@
 defmodule Gossip do
   @moduledoc """
-  Documentation for Gossip.
+  Documentation for Gossip. Application start.
   """
 
   @doc """
