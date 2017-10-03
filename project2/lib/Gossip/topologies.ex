@@ -15,7 +15,7 @@ defmodule Gossip.Topologies do
   """
 
   @doc """
-  Creates a 2D array representing each node. Iterate L->R,
+  Creates a 2D array representing the actors. Iterate L->R,
   top to bottom over the array, assigning neighbors using 
   adjacent array entries.
 
@@ -24,6 +24,18 @@ defmodule Gossip.Topologies do
   def build_2D_grid(num_nodes) do
     l = multi_list(num_nodes)
     iterate_grid(0, 0, l, num_nodes, [])
+  end
+
+  @doc """
+  Create 1D array representing each actor.
+  Returns a list of each actor with
+  its neighbors
+
+  num_nodes is the line length.
+  """
+  def build_1D(num_nodes) do
+    {r, _} = row(num_nodes - 1, [0], 1)
+    iterate_line(0, r, num_nodes, [])
   end
 
   ##############################
@@ -53,6 +65,29 @@ defmodule Gossip.Topologies do
     {r, k}
   end
 
+  def iterate_grid(i, j, m, n, node_list) do
+    {i, j, nbs, k} = 
+      if j == n do
+        {i + 1, 0, nil, 0}
+      else
+        nbs = neighbors_2D(i, j, m, n)
+        k = m |> Enum.at(i) |> Enum.at(j)         
+        {i, j + 1, nbs, k}
+      end
+    cond do 
+      nbs -> # new col
+        if i < n do
+          node_list ++ iterate_grid(i, j, m, n, node_list) ++ [%{k => nbs}]
+        else
+          node_list
+        end
+      i < n -> # new row
+        node_list ++ iterate_grid(i, j, m, n, node_list)
+      true -> # done
+        node_list
+    end
+  end
+
   @doc """
   |----|----|
   |__(i,j)__|
@@ -63,7 +98,7 @@ defmodule Gossip.Topologies do
 
   returns a list of the neighbors of node (i,j)
   """
-  def neighbors(i, j, m, n)  do
+  def neighbors_2D(i, j, m, n)  do
     cond do
       is_internal(i, j, n) ->
         n1 = m 
@@ -182,33 +217,38 @@ defmodule Gossip.Topologies do
     end
   end
 
-  def iterate_grid(i, j, m, n, node_list) do
-    {i, j, nbs, k} = 
-      if j == n do
-        {i + 1, 0, nil, 0}
+  ##############################
+  # HELPERS FOR 1D LINE
+  ##############################
+  def iterate_line(i, line, n, node_list) do
+      if i < n do
+        nbs = neighbors_1D(i, line, n)
+        node_list ++ iterate_line(i + 1, line, n, node_list) ++ [%{i => nbs}]
       else
-        nbs = neighbors(i, j, m, n)
-        k = m |> Enum.at(i) |> Enum.at(j)         
-        {i, j + 1, nbs, k}
-      end
-    cond do 
-      nbs -> # new col
-        if i < n do
-          node_list ++ iterate_grid(i, j, m, n, node_list) ++ [%{k => nbs}]
-        else
-          node_list
-        end
-      i < n -> # new row
-        node_list ++ iterate_grid(i, j, m, n, node_list)
-      true -> # done
         node_list
+      end
+  end
+
+  def neighbors_1D(i, l, n) do
+    cond do 
+      i == 0 ->
+        n1 = l 
+          |> Enum.at(i+1)
+        [n1]
+      i == n - 1 ->
+        n1 = l
+          |> Enum.at(i-1)
+        [n1]
+      true ->
+        n1 = l
+          |> Enum.at(i-1)
+        n2 = l
+          |> Enum.at(i+1)
+        [n1, n2]
     end
   end
 
   # def buildFullyConnected(num_nodes) do
-  # end
-
-  # def buildLine(num_nodes) do
   # end
 
   # def buildImperfect2DGrid(num_nodes) do
