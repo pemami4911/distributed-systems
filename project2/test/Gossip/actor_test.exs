@@ -13,12 +13,12 @@ defmodule ActorTest do
   end
 
   test "start an actor, give it a rumor to send and test it broadcasts it" do
-    args1 = [{:name, :Actor1}, {:neighbors, [:Actor2, :Actor3]},
-      {:gossip_limit, 10}]
-    args2 = [{:name, :Actor2}, {:neighbors, [:Actor1, :Actor3]},
-      {:gossip_limit, 10}]
-    args3 = [{:name, :Actor3}, {:neighbors, [:Actor1, :Actor2]},
-      {:gossip_limit, 10}]
+    args1 = %{:name => :Actor1, :neighbors => [:Actor2, :Actor3],
+      :gossip_limit => 10}
+    args2 = %{:name => :Actor2, :neighbors => [:Actor1, :Actor3],
+      :gossip_limit => 10}
+    args3 = %{:name => :Actor3, :neighbors => [:Actor1, :Actor2],
+      :gossip_limit => 10}
 
     {:ok, actor1} = Gossip.Actor.start_link(args1)
     {:ok, actor2} = Gossip.Actor.start_link(args2)
@@ -26,8 +26,13 @@ defmodule ActorTest do
 
     GenServer.cast(actor1, {:rumor, "test"})
 
-    # Wait until all have received 10 messages
-    check_actors(actor1, actor2, actor3, 10)
+    # Wait until all have received 5 messages
+    # If you wait until all 10, generally 1 actor 
+    # will "starve", i.e., never receive 10 before
+    # the other actors have stopped. Hence, need 
+    # to add a clause to shut down the last actor
+    # standing (no one listening to the gossip)
+    check_actors(actor1, actor2, actor3, 5)
   end
 
 end
