@@ -40,14 +40,15 @@ defmodule Gossip.Manager do
           System.halt(1)
       end
     
-    actor_args, actor = 
+    {actor_args, actor} = 
       cond do 
         opts[:algorithm] == "gossip" ->
           build_actor_args(neighbors, "gossip", 10)
         opts[:algorithm] == "push-sum" ->
-          build_actor_args(neighbors, "push-sum", 10e-3)
+          build_actor_args(neighbors, "push-sum", :math.pow(10, -10))
         true ->
           Logger.error "unsupported algorithm provided: #{opts[:algorithm]}"
+          System.halt(1)
       end
         # gossip algo args
     gossip_args = [topLevel: opts[:topLevel], numNodes: length(neighbors)]
@@ -66,14 +67,14 @@ defmodule Gossip.Manager do
             k = List.first(Map.keys(x))
             [%{:name => k, :neighbors => x[k], :gossip_limit => info}] end
           ) |> Enum.concat
-        nbs, Gossip.Actor
+        {nbs, Gossip.Actor}
       algo == "push-sum" ->
         nbs =
         Enum.map(neighbors, fn x -> 
             k = List.first(Map.keys(x))
             [%{:name => k, :neighbors => x[k], :eps => info}] end
           ) |> Enum.concat
-        nbs, Gossip.PushSumActor
+        {nbs, Gossip.PushSumActor}
     end
   end
 end

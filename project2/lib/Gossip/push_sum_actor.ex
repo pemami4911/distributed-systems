@@ -12,102 +12,61 @@ defmodule Gossip.PushSumActor do
     
       def init(args) do
         # args contains the name and neighbors
-        state = %{:args => args, :s => args[:name], :w => 1.0}
-        state = push_sum(1, state)
+        state = %{:args => args, :s => args[:name], :w => 1.0, :streak => 0}
         {:ok, state}
       end
-    
-      defp push_sum(delta_t, state) do
-        # check if no more neighbors!
-        if length(state[:args][:neighbors]) == 0 do
-          Logger.debug "#{state[:args][:name]} terminating because neighbors are all dead!"
-          GenServer.cast({:global, :main}, {:done, %{}}) 
-          state
-        else
-          estimate = state[:s] / state[:w]
-          # if have the rumor, randomly select neighbor
-          # to send to
-          new_state = 
-            if state[:recv_count] > 0 do
-              recipient = Enum.take_random(state[:args][:neighbors], 1)
-                |> List.first
-              Logger.debug "#{state[:args][:name]} is gossiping to #{recipient} with send count #{state[:send_count]} and receive count #{state[:recv_count]}"
-              GenServer.cast({:global, recipient}, {:rumor, state[:rumor]})
-              
-              %{:args => state[:args],
-              :rumor => state[:rumor],
-              :recv_count => state[:recv_count],
-              :send_count => state[:send_count] + 1}
-            else
-              state
-            end
-    
-          # reschedule if recv_count < N
-          # otherwise send a msg indicating done
-          cond do
-            state[:send_count] >= state[:args][:gossip_limit] * 3 ->
-              Logger.debug "#{state[:args][:name]} timed out with send count #{state[:send_count]} and receive count #{state[:recv_count]}"
-              GenServer.cast({:global, :main}, {:done, %{}})
-              broadcast_death(state, state[:args][:neighbors])
-            state[:recv_count] < state[:args][:gossip_limit] ->
-              Process.send_after(self(), :gossip, delta_t)
-            true ->
-              # Don't continue to schedule
-              GenServer.cast({:global, :main}, {:done, %{}}) 
-              broadcast_death(state, state[:args][:neighbors])        
-          end
-          new_state
-        end
+            
+      def handle_cast({:init_push, _nonde}, state) do
+        # transmit to random neighbor
+        recipient = Enum.take_random(state[:args][:neighbors], 1)
+        |> List.first
+        GenServer.cast({:global, recipient}, {:push, %{:s => state[:s]/2, :w => state[:w]/2}})
+        
+        state = Map.replace(state, :s, state[:s]/2)
+        |> Map.replace(:w, state[:w]/2)
+
+        {:noreply, state}
       end
-    
-      @doc """
-      Callback to send out another rumor and schedule 
-      the next broadcast
-      """
-      def handle_info(:gossip, state) do
-         # Update the send count
-        state = gossip(1, state)
-        {:noreply, state}    
-      end
-    
-      @doc """
-      Callback for sending the number of received msgs
-      """
-      def handle_call(:check_recv, _from, state) do
-        {:reply, state[:recv_count], state}
-      end
-    
       @doc """
       Other actors call this method to send this Actor 
-      a rumor
+      s/2 and w/2
       """
-      def handle_cast({:rumor, rumor}, state) do
-        # Update the recv count
-        state = %{:args => state[:args],
-          :rumor => rumor,
-          :recv_count => state[:recv_count] + 1,
-          :send_count => state[:send_count]}
+      def handle_cast({:push, data}, state) do
+        # Update s/w
+        prev = state[:s] / state[:w]
+
+        state = Map.replace(state, :s, state[:s] + data[:s])
+          |> Map.replace(:w, state[:w] + data[:w])
+        
+        # check for convergence
+        estimate = state[:s] / state[:w]
+        
+        state = 
+          if abs(estimate - prev) < state[:args][:eps] do
+            # update streak
+            Map.replace(state, :streak, state[:streak] + 1)
+          else
+            state
+          end    
+        
+        state =
+          if state[:streak] == 3 do
+            # done!
+            Logger.info "#{state[:args][:name]} terminating with sum estimate #{estimate}"
+            GenServer.cast({:global, :main}, {:done, true})
+            state
+          else 
+            # transmit to random neighbor
+            recipient = Enum.take_random(state[:args][:neighbors], 1)
+            |> List.first
+            Logger.debug "#{state[:args][:name]} is pushing to #{recipient} with sum estimate #{estimate}"
+            GenServer.cast({:global, recipient}, {:push, %{:s => state[:s]/2, :w => state[:w]/2}})
+            
+            # update s,w
+            Map.replace(state, :s, state[:s]/2)
+            |> Map.replace(:w, state[:w]/2)
+          end
+
         {:noreply, state}
-      end
-    
-      def handle_cast({:death, neighbor}, state) do
-        # remove the dead neighbor from list of neighbors
-        nbs = List.delete(state[:args][:neighbors], neighbor)
-        args = %{:name => state[:args][:name],
-          :neighbors => nbs, :push_sum_limit => state[:args][:push_sum_limit]}
-        state = %{:args => args,
-          :rumor => state[:rumor],
-          :recv_count => state[:recv_count],
-          :send_count => state[:send_count]}
-    
-        {:noreply, state}
-      end
-    
-      def broadcast_death(state, neighbors) do
-        Enum.map(neighbors, fn neighbor ->
-           GenServer.cast({:global, neighbor},
-            {:death, state[:args][:name]})
-        end)
-      end
-    
+      end    
     end
