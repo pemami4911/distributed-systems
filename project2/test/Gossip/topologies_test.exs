@@ -13,7 +13,7 @@ defmodule TopologiesTest do
   to its neighbors.
   """
   test "Assign neighbors to 3 x 3 grid" do 
-    res = Gossip.Topologies.build_2D_grid(3)
+    res = Gossip.Topologies.build_2D(3)
     # Check bottom right corner
     assert List.first(res)[8] == [5, 7]
   end
@@ -29,6 +29,21 @@ defmodule TopologiesTest do
     assert List.first(res)[4] == [3]
     {_, res} = List.pop_at(res, 0)
     assert List.first(res)[3] == [2, 4]
+  end
+
+  @doc """
+  Given num_nodes, bring up a fully connected
+  graph of actors. Each actor should have the 
+  others as its neighbors
+  """
+  test "Assign neighbors to fully connected network" do
+    res = Gossip.Topologies.build_full(5)
+    assert List.first(res)[0] == [1, 2, 3, 4]
+  end
+
+  test "Assign neighbors to imp 2D" do
+    res = Gossip.Topologies.build_imp2D(3) 
+    assert length(List.first(res)[8]) == 3
   end
 
 end

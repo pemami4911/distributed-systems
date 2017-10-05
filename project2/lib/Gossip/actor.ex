@@ -103,14 +103,11 @@ reaches a receive limit.
     {:noreply, state}
   end
 
-  def broadcast_death(state, [neighbor | neighbors]) when length(neighbors) > 0 do
-    GenServer.cast({:global, neighbor}, {:death, state[:args][:name]})
-    broadcast_death(state, neighbors)
+  def broadcast_death(state, neighbors) do
+    Enum.map(neighbors, fn neighbor ->
+       GenServer.cast({:global, neighbor},
+        {:death, state[:args][:name]})
+    end)
   end
-
-  def broadcast_death(state, [neighbor]) do
-    GenServer.cast({:global, neighbor}, {:death, state[:args][:name]})
-  end
-
 
 end

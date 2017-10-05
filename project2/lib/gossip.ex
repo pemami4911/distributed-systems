@@ -12,6 +12,7 @@ defmodule Gossip.CLI do
     
     # Start Gossip
     t1 = :erlang.timestamp()
+  
     GenServer.call({:global, :main}, {:start_rumor, "test"})
     
     receive do

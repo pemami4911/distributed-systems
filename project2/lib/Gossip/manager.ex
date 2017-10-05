@@ -3,6 +3,7 @@ defmodule Gossip.Manager do
   Supervisor that manages all processes
   in Gossip
   """
+  require Logger
   use Supervisor
 
   def start_link(opts) do
@@ -10,10 +11,6 @@ defmodule Gossip.Manager do
   end
   
   def init(opts) do
-    # each actor should receive gossip_limit msgs
-    # before stopping spreading rumors
-    gossip_limit = 10
-
     # 1. Build the topology, which involves assigning
     # nodes their neighbors
     
@@ -24,43 +21,59 @@ defmodule Gossip.Manager do
           # by finding the nearest perfect square
           :math.sqrt(opts[:numNodes]) 
             |> Float.ceil
-            |> Gossip.Topologies.build_2D_grid
+            |> round
+            |> Gossip.Topologies.build_2D
 
         opts[:topology] == "line" ->
           Gossip.Topologies.build_1D(opts[:numNodes])
 
         opts[:topology] == "full" ->
-          IO.puts "not implemented"
+          Gossip.Topologies.build_full(opts[:numNodes])
+
         opts[:topology] == "imp2D" ->
-          IO.puts "not implemented"
+          :math.sqrt(opts[:numNodes]) 
+          |> Float.ceil
+          |> round
+          |> Gossip.Topologies.build_imp2D
         true ->
-          IO.puts(:stderr, "unsupported topology provided: #{opts[:topology]}")
+          Logger.error "unsupported topology provided: #{opts[:topology]}"
           System.halt(1)
       end
     
-    
-    actor_args = build_actor_args(neighbors, gossip_limit)
-    # gossip algo args
+    actor_args, actor = 
+      cond do 
+        opts[:algorithm] == "gossip" ->
+          build_actor_args(neighbors, "gossip", 10)
+        opts[:algorithm] == "push-sum" ->
+          build_actor_args(neighbors, "push-sum", 10e-3)
+        true ->
+          Logger.error "unsupported algorithm provided: #{opts[:algorithm]}"
+      end
+        # gossip algo args
     gossip_args = [topLevel: opts[:topLevel], numNodes: length(neighbors)]
-    build_children([], actor_args) ++ 
+
+    Enum.reduce(actor_args, [], fn(x, acc) ->
+      [Supervisor.child_spec({actor, x}, id: x[:name]) | acc] end) ++ 
       [Supervisor.child_spec({Gossip.GossipAlgo, gossip_args}, id: -1)]
       |> Supervisor.init(strategy: :one_for_one)
   end
 
-  def build_actor_args(neighbors, gl) do
-    Enum.map(neighbors, fn x -> 
-      k = List.first(Map.keys(x))
-      [%{:name => k, :neighbors => x[k], :gossip_limit => gl}] end
-    ) |> Enum.concat
+  defp build_actor_args(neighbors, algo, info) do
+    cond do
+      algo == "gossip" ->
+        nbs =
+          Enum.map(neighbors, fn x -> 
+            k = List.first(Map.keys(x))
+            [%{:name => k, :neighbors => x[k], :gossip_limit => info}] end
+          ) |> Enum.concat
+        nbs, Gossip.Actor
+      algo == "push-sum" ->
+        nbs =
+        Enum.map(neighbors, fn x -> 
+            k = List.first(Map.keys(x))
+            [%{:name => k, :neighbors => x[k], :eps => info}] end
+          ) |> Enum.concat
+        nbs, Gossip.PushSumActor
+    end
   end
-
-  def build_children(children, [args | list]) when length(list) > 0 do
-    children ++ [Supervisor.child_spec({Gossip.Actor, args}, id: args[:name])]
-      |> build_children(list)
-  end
-
-  def build_children(children, [args]) do
-    children ++ [Supervisor.child_spec({Gossip.Actor, args}, id: args[:name])]
-  end
-
 end

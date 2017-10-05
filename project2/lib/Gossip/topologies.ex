@@ -21,11 +21,19 @@ defmodule Gossip.Topologies do
 
   num_nodes is the row/col length
   """
-  def build_2D_grid(num_nodes) do
+  def build_2D(num_nodes) do
     l = multi_list(num_nodes)
     iterate_grid(0, 0, l, num_nodes, [])
   end
 
+  @doc """
+  Same as build_2D, except each node randomly gets an 
+  extra neighbor
+  """
+  def build_imp2D(num_nodes) do
+    l = multi_list(num_nodes)
+    iterate_grid(0, 0, l, num_nodes, [], true)
+  end
   @doc """
   Create 1D array representing each actor.
   Returns a list of each actor with
@@ -36,6 +44,14 @@ defmodule Gossip.Topologies do
   def build_1D(num_nodes) do
     {r, _} = row(num_nodes - 1, [0], 1)
     iterate_line(0, r, num_nodes, [])
+  end
+
+  @doc """
+  Create a list of neighbor mappings for
+  a fully connected graph
+  """
+  def build_full(num_nodes) do
+    neighbors_full([], num_nodes - 1, num_nodes)
   end
 
   ##############################
@@ -65,24 +81,29 @@ defmodule Gossip.Topologies do
     {r, k}
   end
 
-  def iterate_grid(i, j, m, n, node_list) do
+  def iterate_grid(i, j, m, n, node_list, imp \\ false) do
     {i, j, nbs, k} = 
       if j == n do
         {i + 1, 0, nil, 0}
       else
-        nbs = neighbors_2D(i, j, m, n)
+        nbs =
+          if imp do
+            neighbors_imp2D(i, j, m, n)
+          else
+            neighbors_2D(i, j, m, n)
+          end
         k = m |> Enum.at(i) |> Enum.at(j)         
         {i, j + 1, nbs, k}
       end
     cond do 
       nbs -> # new col
         if i < n do
-          node_list ++ iterate_grid(i, j, m, n, node_list) ++ [%{k => nbs}]
+          node_list ++ iterate_grid(i, j, m, n, node_list, imp) ++ [%{k => nbs}]
         else
           node_list
         end
       i < n -> # new row
-        node_list ++ iterate_grid(i, j, m, n, node_list)
+        node_list ++ iterate_grid(i, j, m, n, node_list, imp)
       true -> # done
         node_list
     end
@@ -101,51 +122,29 @@ defmodule Gossip.Topologies do
   def neighbors_2D(i, j, m, n)  do
     cond do
       is_internal(i, j, n) ->
-        n1 = m 
-          |> Enum.at(i-1) 
-          |> Enum.at(j)
-        n2 = m
-          |> Enum.at(i+1)
-          |> Enum.at(j)
-        n3 = m 
-          |> Enum.at(i)
-          |> Enum.at(j-1)
-        n4 = m
-          |> Enum.at(i)
-          |> Enum.at(j+1)
+        n1 = m |> Enum.at(i-1) |> Enum.at(j)
+        n2 = m |> Enum.at(i+1) |> Enum.at(j)
+        n3 = m |> Enum.at(i) |> Enum.at(j-1)
+        n4 = m |> Enum.at(i) |> Enum.at(j+1)
         [n1, n2, n3, n4]
       # check top edge
       i == 0 ->
         cond do
           # check top left corner
           j == 0 ->
-            n1 = m
-              |> Enum.at(i)
-              |> Enum.at(j+1)
-            n2 = m
-              |> Enum.at(i+1)
-              |> Enum.at(j)
+            n1 = m |> Enum.at(i) |> Enum.at(j+1)
+            n2 = m |> Enum.at(i+1) |> Enum.at(j)
             [n1, n2]
           # check top right corner
           j == n - 1 ->
-            n1 = m
-              |> Enum.at(i+1)
-              |> Enum.at(j)
-            n2 = m
-              |> Enum.at(i)
-              |> Enum.at(j-1)
+            n1 = m |> Enum.at(i+1) |> Enum.at(j)
+            n2 = m |> Enum.at(i) |> Enum.at(j-1)
             [n1, n2]
           # center of top edge
           true ->
-            n1 = m
-              |> Enum.at(i)
-              |> Enum.at(j-1)
-            n2 = m
-              |> Enum.at(i)
-              |> Enum.at(j+1)
-            n3 = m
-              |> Enum.at(i+1)
-              |> Enum.at(j)
+            n1 = m |> Enum.at(i) |> Enum.at(j-1)
+            n2 = m |> Enum.at(i) |> Enum.at(j+1)
+            n3 = m |> Enum.at(i+1) |> Enum.at(j)
             [n1, n2, n3]
         end
       # check bottom edge
@@ -153,58 +152,32 @@ defmodule Gossip.Topologies do
         cond do
           # check bottom left corner
           j == 0 ->
-            n1 = m
-              |> Enum.at(i-1)
-              |> Enum.at(j)
-            n2 = m
-              |> Enum.at(i)
-              |> Enum.at(j+1)
+            n1 = m |> Enum.at(i-1) |> Enum.at(j)
+            n2 = m |> Enum.at(i) |> Enum.at(j+1)
             [n1, n2]
           # check bottom right corner
           j == n - 1 ->
-            n1 = m
-              |> Enum.at(i-1)
-              |> Enum.at(j)
-            n2 = m
-              |> Enum.at(i)
-              |> Enum.at(j-1)
+            n1 = m |> Enum.at(i-1) |> Enum.at(j)
+            n2 = m |> Enum.at(i) |> Enum.at(j-1)
             [n1, n2]
           # check center of bottom edge
           true ->
-            n1 = m
-              |> Enum.at(i)
-              |> Enum.at(j-1)
-            n2 = m
-              |> Enum.at(i)
-              |> Enum.at(j+1)
-            n3 = m
-              |> Enum.at(i-1)
-              |> Enum.at(j)
+            n1 = m |> Enum.at(i) |> Enum.at(j-1)
+            n2 = m |> Enum.at(i) |> Enum.at(j+1)
+            n3 = m |> Enum.at(i-1) |> Enum.at(j)
             [n1, n2, n3]
         end
       # check left edge
       j == 0 ->
-        n1 = m
-          |> Enum.at(i-1)
-          |> Enum.at(j)
-        n2 = m
-          |> Enum.at(i+1)
-          |> Enum.at(j)
-        n3 = m
-          |> Enum.at(i)
-          |> Enum.at(j+1)
+        n1 = m |> Enum.at(i-1) |> Enum.at(j)
+        n2 = m |> Enum.at(i+1) |> Enum.at(j)
+        n3 = m |> Enum.at(i) |> Enum.at(j+1)
         [n1, n2, n3]
       # check right edge
       j == n - 1 ->
-        n1 = m
-          |> Enum.at(i-1)
-          |> Enum.at(j)
-        n2 = m
-          |> Enum.at(i+1)
-          |> Enum.at(j)
-        n3 = m
-          |> Enum.at(i)
-          |> Enum.at(j-1)
+        n1 = m |> Enum.at(i-1) |> Enum.at(j)
+        n2 = m |> Enum.at(i+1) |> Enum.at(j)
+        n3 = m |> Enum.at(i) |> Enum.at(j-1)
         [n1, n2, n3]      
       end
   end
@@ -248,10 +221,137 @@ defmodule Gossip.Topologies do
     end
   end
 
-  # def buildFullyConnected(num_nodes) do
-  # end
+  ##############################
+  # HELPERS FOR FULL
+  ##############################
+  def neighbors_full(acc, k, n) when k >= 0 do
+    [%{k => 
+      Enum.map(0..n-1, fn x ->
+        if x != k do x end
+      end)
+      |> List.delete(nil)
+      }] ++ acc
+      |> neighbors_full(k - 1, n)
+  end
+  
+  def neighbors_full(acc, _k, _n) do
+    acc
+  end
 
-  # def buildImperfect2DGrid(num_nodes) do
-  # end
+  ##############################
+  # HELPERS FOR IMP 2D
+  ##############################
+  def neighbors_imp2D(i, j, m, n)  do
+    k = m |> Enum.at(i) |> Enum.at(j)
+    num_nodes = m |> Enum.at(n-1) |> Enum.at(n-1)
+
+    cond do
+      is_internal(i, j, n) ->
+        n1 = m |> Enum.at(i-1) |> Enum.at(j)
+        n2 = m |> Enum.at(i+1) |> Enum.at(j)
+        n3 = m |> Enum.at(i) |> Enum.at(j-1)
+        n4 = m |> Enum.at(i) |> Enum.at(j+1)
+        imp_node_candidates = 
+          Enum.map(0..num_nodes, fn x -> x end)
+          |> List.delete(k) |> List.delete(n1) 
+          |> List.delete(n2) |> List.delete(n3) 
+          |> List.delete(n4)
+        n5 = List.first(Enum.take_random(imp_node_candidates, 1))
+        [n1, n2, n3, n4, n5]
+      # check top edge
+      i == 0 ->
+        cond do
+          # check top left corner
+          j == 0 ->
+            n1 = m |> Enum.at(i) |> Enum.at(j+1)
+            n2 = m |> Enum.at(i+1) |> Enum.at(j)
+            imp_node_candidates = 
+              Enum.map(0..num_nodes, fn x -> x end)
+              |> List.delete(k) |> List.delete(n1) 
+              |> List.delete(n2)
+            n3 = List.first(Enum.take_random(imp_node_candidates, 1))
+            [n1, n2, n3]
+          # check top right corner
+          j == n - 1 ->
+            n1 = m |> Enum.at(i+1) |> Enum.at(j)
+            n2 = m |> Enum.at(i) |> Enum.at(j-1)
+            imp_node_candidates = 
+            Enum.map(0..num_nodes, fn x -> x end)
+              |> List.delete(k) |> List.delete(n1) 
+              |> List.delete(n2)
+            n3 = List.first(Enum.take_random(imp_node_candidates, 1))
+            [n1, n2, n3]
+          # center of top edge
+          true ->
+            n1 = m |> Enum.at(i) |> Enum.at(j-1)
+            n2 = m |> Enum.at(i) |> Enum.at(j+1)
+            n3 = m |> Enum.at(i+1) |> Enum.at(j)
+            imp_node_candidates = 
+              Enum.map(0..num_nodes, fn x -> x end)
+              |> List.delete(k) |> List.delete(n1) 
+              |> List.delete(n2) |> List.delete(n3)
+            n4 = List.first(Enum.take_random(imp_node_candidates, 1))
+            [n1, n2, n3, n4]
+        end
+      # check bottom edge
+      i == n - 1 ->
+        cond do
+          # check bottom left corner
+          j == 0 ->
+            n1 = m |> Enum.at(i-1) |> Enum.at(j)
+            n2 = m |> Enum.at(i) |> Enum.at(j+1)
+            imp_node_candidates = 
+              Enum.map(0..num_nodes, fn x -> x end)
+              |> List.delete(k) |> List.delete(n1) 
+              |> List.delete(n2)
+            n3 = List.first(Enum.take_random(imp_node_candidates, 1))
+            [n1, n2, n3]
+          # check bottom right corner
+          j == n - 1 ->
+            n1 = m |> Enum.at(i-1) |> Enum.at(j)
+            n2 = m |> Enum.at(i) |> Enum.at(j-1)
+            imp_node_candidates = 
+              Enum.map(0..num_nodes, fn x -> x end)
+              |> List.delete(k) |> List.delete(n1) 
+              |> List.delete(n2)
+            n3 = List.first(Enum.take_random(imp_node_candidates, 1))
+            [n1, n2, n3]
+          # check center of bottom edge
+          true ->
+            n1 = m |> Enum.at(i) |> Enum.at(j-1)
+            n2 = m |> Enum.at(i) |> Enum.at(j+1)
+            n3 = m |> Enum.at(i-1) |> Enum.at(j)
+            [n1, n2, n3]
+            imp_node_candidates = 
+              Enum.map(0..num_nodes, fn x -> x end)
+              |> List.delete(k) |> List.delete(n1) 
+              |> List.delete(n2) |> List.delete(n3)
+            n4 = List.first(Enum.take_random(imp_node_candidates, 1))
+            [n1, n2, n3, n4]
+        end
+      # check left edge
+      j == 0 ->
+        n1 = m |> Enum.at(i-1) |> Enum.at(j)
+        n2 = m |> Enum.at(i+1) |> Enum.at(j)
+        n3 = m |> Enum.at(i) |> Enum.at(j+1)
+        imp_node_candidates = 
+          Enum.map(0..num_nodes, fn x -> x end)
+          |> List.delete(k) |> List.delete(n1) 
+          |> List.delete(n2) |> List.delete(n3)
+        n4 = List.first(Enum.take_random(imp_node_candidates, 1))
+        [n1, n2, n3, n4]
+      # check right edge
+      j == n - 1 ->
+        n1 = m |> Enum.at(i-1) |> Enum.at(j)
+        n2 = m |> Enum.at(i+1) |> Enum.at(j)
+        n3 = m |> Enum.at(i) |> Enum.at(j-1)
+        imp_node_candidates = 
+          Enum.map(0..num_nodes, fn x -> x end)
+          |> List.delete(k) |> List.delete(n1) 
+          |> List.delete(n2) |> List.delete(n3)
+        n4 = List.first(Enum.take_random(imp_node_candidates, 1))
+        [n1, n2, n3, n4]      
+      end
+  end
 
 end
