@@ -43,7 +43,7 @@ defmodule Gossip.Manager do
     {actor_args, actor} = 
       cond do 
         opts[:algorithm] == "gossip" ->
-          build_actor_args(neighbors, "gossip", 10)
+          build_actor_args(neighbors, "gossip", 15)
         opts[:algorithm] == "push-sum" ->
           build_actor_args(neighbors, "push-sum", :math.pow(10, -10))
         true ->
