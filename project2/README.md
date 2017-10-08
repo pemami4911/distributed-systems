@@ -4,6 +4,16 @@
 
 Patrick Emami (UFID - 70923125)
 
+## Running
+
+Build with 
+
+  `mix escript.build`
+    
+Run with
+
+  `./project2 --numNodes $NUM_NODES$ --topology {line|2D|imp2D|full} --algorithm {gossip|push-sum}`
+    
 ## What I Did
 
 I implemented [Gossip](https://en.wikipedia.org/wiki/Gossip_protocol) and [Push-Sum](http://www.inf.fu-berlin.de/lehre/WS11/Wireless/Lectures/lecture13.pdf) for a line of nodes, 2D grid, improper 2D grid, and a fully-connected graph of nodes. 
@@ -20,4 +30,5 @@ In the gossip algorithm, I had to "kill off" a node if all of its neighbors stop
 ## Results
 
 ![Gossip](results/gossip.png)
+
 ![Push-Sum](results/push-sum.png)
