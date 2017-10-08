@@ -22,7 +22,7 @@ defmodule Gossip.CLI do
       {:done, _msg} ->
         t2 = :erlang.timestamp()
         #IO.puts "time to convergence: #{:timer.now_diff(t2, t1) * 0.000001} seconds"
-        IO.puts "#{opts[:numNodes]} #{:timer.now_diff(t2, t1) * 0.000001}"
+        IO.puts "numNodes: #{opts[:numNodes]} time to convergence: #{:timer.now_diff(t2, t1) * 0.000001} seconds"
         System.halt(0)
     end
 
