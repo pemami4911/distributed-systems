@@ -22,13 +22,13 @@ defmodule Gossip.GossipAlgo do
   end
 
   def handle_call({:start_push_sum, _none}, _from, state) do
-    GenServer.cat({:global, 1}, {:push, %{}})
+    GenServer.cast({:global, 1}, {:init_push, %{}})
     {:reply, :ok, state}
   end
   
-  def handle_cast({:done, %{}}, state) do    
+  def handle_cast({:done, force_quit}, state) do    
     new_state = %{:num_finished => state[:num_finished] + 1, :N => state[:N], :top_level => state[:top_level]}
-    if new_state[:num_finished] == new_state[:N] do
+    if new_state[:num_finished] == new_state[:N] || force_quit do
        send(new_state[:top_level], {:done, %{}})
     end
     {:noreply, new_state}

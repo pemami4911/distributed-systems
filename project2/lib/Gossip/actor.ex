@@ -22,7 +22,7 @@ reaches a receive limit.
     # check if no more neighbors!
     if length(state[:args][:neighbors]) == 0 do
       Logger.debug "#{state[:args][:name]} terminating because neighbors are all dead!"
-      GenServer.cast({:global, :main}, {:done, %{}}) 
+      GenServer.cast({:global, :main}, {:done, false}) 
       state
     else
       # if have the rumor, randomly select neighbor
@@ -47,13 +47,13 @@ reaches a receive limit.
       cond do
         state[:send_count] >= state[:args][:gossip_limit] * 3 ->
           Logger.debug "#{state[:args][:name]} timed out with send count #{state[:send_count]} and receive count #{state[:recv_count]}"
-          GenServer.cast({:global, :main}, {:done, %{}})
+          GenServer.cast({:global, :main}, {:done, false})
           broadcast_death(state, state[:args][:neighbors])
         state[:recv_count] < state[:args][:gossip_limit] ->
           Process.send_after(self(), :gossip, delta_t)
         true ->
           # Don't continue to schedule
-          GenServer.cast({:global, :main}, {:done, %{}}) 
+          GenServer.cast({:global, :main}, {:done, false}) 
           broadcast_death(state, state[:args][:neighbors])        
       end
       new_state
@@ -94,7 +94,8 @@ reaches a receive limit.
     # remove the dead neighbor from list of neighbors
     nbs = List.delete(state[:args][:neighbors], neighbor)
     args = %{:name => state[:args][:name],
-      :neighbors => nbs, :gossip_limit => state[:args][:gossip_limit]}
+      :neighbors => nbs,
+      :gossip_limit => state[:args][:gossip_limit]}
     state = %{:args => args,
       :rumor => state[:rumor],
       :recv_count => state[:recv_count],
