@@ -20,5 +20,16 @@ defmodule Pastry.Node do
         - update routing table
         - join?
     """
+    require Logger
     use GenServer
+
+    def start_link(args) do
+        node_id = Base.encode16(:crypto.hash(:sha, args[:id]))
+        GenServer.start_link(__MODULE__, [], [{:name, {:global, node_id}}])
+    end
+
+    def init(_args) do
+        state = %{:map => %{}, :left_n => '', :right_n => '', :finger_table => %{}} 
+        {:ok, state}
+    end
 end
