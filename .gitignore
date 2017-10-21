@@ -4,3 +4,9 @@
 erl_crash.dump
 *.ez
 *.beam
+
+project1/project1
+project2/project2
+project3/project3
+
+*.DS_Store
