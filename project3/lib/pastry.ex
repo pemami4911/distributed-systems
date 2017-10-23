@@ -19,7 +19,17 @@ defmodule Pastry.CLI do
       System.halt(1)
     end
     
+    # add all nodes to the network
     add_all(opts[:numNodes], opts)
+    IO.puts "Finished building DHT"
+    # store a bunch of items in the DHT
+    store_all(opts[:numNodes])
+    IO.puts "Finished storing items in DHT"
+
+    {_, num_hops} = GenServer.call({:global, hash("0")},
+        {:get, %{:key => hash(item(opts[:numNodes])), :hops => 0}})
+
+    IO.puts "num hops: #{num_hops}: log N: #{:math.log(opts[:numNodes])}"
 
     # main loop
     receive do
@@ -29,28 +39,38 @@ defmodule Pastry.CLI do
     end
   end
 
-  def add_all(n, opts) do
-    last_node_id = 0
-    
-    for i <- 1..n do
+  def add_all(n, opts) do   
+    for i <- 0..n do
       next_node_id = i
-      opts_ = opts ++ [id: Integer.to_string(next_node_id)]
-      {:ok, _} = Supervisor.start_link([{Pastry.Node, opts_}], strategy: :one_for_one)
-      # join
-      # Store an item in the new node
-      item = "item" <> Integer.to_string(next_node_id)
-      GenServer.call({:global,
-        hash(Integer.to_string(next_node_id))},
-        {:store, %{key => hash(item), value => item})
+      last_node_id = i - 1
+      hashed_id = hash(Integer.to_string(next_node_id))
+      hashed_last_id = hash(Integer.to_string(last_node_id))
+
+      opts_ = opts ++ [id: hashed_id]
+      {:ok, _} = Pastry.Node.start_link(opts_)
       
-      if last_node_id > 0 do
-        # TODO:
-        GenServer.cast({global, 
-        hash(Integer.to_string(last_node_id)),
-        {:join, hash(Integer.to_string(next_node_id))}})
-      end
-        
+      IO.puts "node #{hashed_id} has joined the network"
+
+      if i > 0 do
+        # send the join message
+        GenServer.call({:global, 
+          hashed_last_id},
+          {:join, hashed_id})
+      end    
     end
+  end
+
+  def store_all(n) do
+    hashed_id = hash("0")
+    for i <- 0..n do
+      v = item(i)
+      GenServer.call({:global, hashed_id},
+        {:store, %{:key => hash(v), :value => v}})
+    end
+  end
+
+  def item(id) do
+    "item" <> Integer.to_string(id)    
   end
 
   def hash(x) do
