@@ -53,9 +53,14 @@ defmodule Pastry.CLI do
 
       if i > 0 do
         # send the join message
-        GenServer.call({:global, 
+        path = GenServer.call({:global, 
           hashed_last_id},
           {:join, hashed_id})
+
+        # add each id in the path to the new node
+        Enum.map(path, fn x -> GenServer.cast({:global, hashed_id}, {:announce_arrival, x}) end)
+        # Have the new node alert everyone in its tables of its prescense
+        GenServer.call({:global, hashed_id}, {:update_all_after_join})
       end    
     end
   end
