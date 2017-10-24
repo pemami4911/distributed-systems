@@ -26,10 +26,16 @@ defmodule Pastry.CLI do
     store_all(opts[:numNodes])
     IO.puts "Finished storing items in DHT"
 
-    {_, num_hops} = GenServer.call({:global, hash("0")},
-        {:get, %{:key => hash(item(opts[:numNodes])), :hops => 0}})
 
-    IO.puts "num hops: #{num_hops}: log N: #{:math.log(opts[:numNodes])}"
+
+    # {v, num_hops} = GenServer.call({:global, hash("0")},
+    #     {:get, %{:key => hash(item(1069)), :hops => 0}})
+
+    # IO.puts "Grabbed #{v} in num hops: #{num_hops}, log N: #{:math.log(opts[:numNodes])}"
+
+    #state = GenServer.call({:global, hash("0")}, {:get_state})
+    #IO.inspect(state)
+    GenServer.cast({:global, hash("0")}, {:make_reqs})
 
     # main loop
     receive do
@@ -49,14 +55,15 @@ defmodule Pastry.CLI do
       opts_ = opts ++ [id: hashed_id]
       {:ok, _} = Pastry.Node.start_link(opts_)
       
-      IO.puts "node #{hashed_id} has joined the network"
+      #Logger.debug "Adding #{hashed_id} to the network"
 
       if i > 0 do
         # send the join message
+        data = %{:key => hashed_id, :path => []}
         path = GenServer.call({:global, 
           hashed_last_id},
-          {:join, hashed_id})
-
+          {:join, data})
+        
         # add each id in the path to the new node
         Enum.map(path, fn x -> GenServer.cast({:global, hashed_id}, {:announce_arrival, x}) end)
         # Have the new node alert everyone in its tables of its prescense
@@ -67,8 +74,9 @@ defmodule Pastry.CLI do
 
   def store_all(n) do
     hashed_id = hash("0")
-    for i <- 0..n do
+    for i <- n..2*n do
       v = item(i)
+      Logger.info "Storing key #{i}: #{hash(v)}"
       GenServer.call({:global, hashed_id},
         {:store, %{:key => hash(v), :value => v}})
     end

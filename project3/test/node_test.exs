@@ -37,11 +37,9 @@ defmodule NodeTest do
         GenServer.call({:global, Pastry.CLI.hash("1")}, {:update_all_after_join})
 
         v = "test0"
-        new_map = GenServer.call({:global,
+         GenServer.call({:global,
           Pastry.CLI.hash("0")},
           {:store, %{:key => Pastry.CLI.hash(v), :value => v}})
-
-        assert new_map == %{Pastry.CLI.hash(v) => v}
 
         v = "test1"
         GenServer.call({:global,
@@ -50,10 +48,11 @@ defmodule NodeTest do
     end
 
     test "send a join message with > 1 node on path" do
+        # Create first node
         args = %{:id => "ABCD", :numNodes => 100, :numRequests => 100}
         {:ok, _} = Pastry.Node.start_link(args)
         
-        # Create first node
+        # Create second node
         args = %{:id => "AECF", :numNodes => 100, :numRequests => 100}
         {:ok, _} = Pastry.Node.start_link(args)
         
@@ -64,39 +63,59 @@ defmodule NodeTest do
 
         assert path == ["ABCD"]
         
+        # verify AECF's state
+        # state = GenServer.call({:global, "AECF"}, {:get_state})
+        # IO.puts "Verifying AECF's state pt. 1"
+        # IO.inspect(state)
+
         Enum.map(path, fn x -> GenServer.cast({:global, "AECF"}, {:announce_arrival, x}) end)        
         GenServer.call({:global, "AECF"}, {:update_all_after_join})
 
-        #assert state == 0
+        # verify ABCD's state
+        # state = GenServer.call({:global, "AECF"}, {:get_state})
+        # IO.puts "Verifying AECF's state pt. 2"
+        # IO.inspect(state)
 
-        # Create second node
-        args = %{:id => "ABCF", :numNodes => 100, :numRequests => 100}
+        # Create third node
+        args = %{:id => "AB31", :numNodes => 100, :numRequests => 100}
         {:ok, _} = Pastry.Node.start_link(args)
         
-        data = %{:key => "ABCF", :path => []}
+        data = %{:key => "AB31", :path => []}
         path2 = GenServer.call({:global, 
             "AECF"},
             {:join, data})
 
         assert path2 == ["AECF", "ABCD"]
 
-        Enum.map(path, fn x -> GenServer.cast({:global, "ABCF"}, {:announce_arrival, x}) end)                
-        GenServer.call({:global, "ABCF"}, {:update_all_after_join})
+        Enum.map(path2, fn x -> GenServer.cast({:global, "AB31"}, {:announce_arrival, x}) end)                
+        GenServer.call({:global, "AB31"}, {:update_all_after_join})
         
-        # v = "test0"
-        # GenServer.call({:global,
-        #     "ABCD"},
-        #     {:store, %{:key => Pastry.CLI.hash(v), :value => v}})
-        # v = "test1"
-        # GenServer.call({:global,
-        #     "AECF"},
-        #     {:store, %{:key => Pastry.CLI.hash(v), :value => v}})
+        k = "AB42"
+        v = 1111
+        GenServer.call({:global,
+            "ABCD"},
+            {:store, %{:key => k, :value => v}})
         
-        # v = "test2"
-        # GenServer.call({:global,
-        #     "ABCF"},
-        #     {:store, %{:key => Pastry.CLI.hash(v), :value => v}})
-    
+        k = "ABBF"
+        v = 1221
+        GenServer.call({:global,
+            "AECF"},
+            {:store, %{:key => k, :value => v}})
+        
+        k = "AF10"
+        v = 5454
+        GenServer.call({:global,
+            "AB31"},
+            {:store, %{:key => k, :value => v}})
+
+        # state = GenServer.call({:global, "AECF"}, {:get_state})
+        # IO.puts "Verifying AECF's state pt. 3"
+        # IO.inspect(state)
+        IO.puts "Getting!"
+        
+        # retrieve some spooky values
+        {vv, hops} = GenServer.call({:global, "ABCD"}, {:get, %{:key => "AF10", :hops => 0}})
+        IO.puts "Found #{vv} in #{hops} hops"
     end
 
 end

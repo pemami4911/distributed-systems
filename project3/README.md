@@ -1,21 +1,24 @@
 # Pastry
 
-**TODO: Add description**
+Team: Patrick Emami
+
+## What's Working 
+
+I implemented the route and join methods from the paper. I implemented a simple "get" and "store" for the DHT. When testing, I run into a few bugs still, but I have verified that it is mostly working. 
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `project3` to your list of dependencies in `mix.exs`:
+I am using the [heap](https://github.com/jamesotron/heap) Elixir package, which can be installed with 
 
-```elixir
-def deps do
-  [
-    {:project3, "~> 0.1.0"}
-  ]
-end
-```
+  `mix deps.get`
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/project3](https://hexdocs.pm/project3).
+Then, just do 
+
+  `mix escript.build` 
+
+## Running
+
+  `./project3 --numNodes X --numRequests Z`
+
+The largest network I managed to deal with was 1000 nodes. It has a few bugs still which causes it to crash- I am still trying to debug them. I observed that even for 1000 nodes, it takes only 2-4 hops to find the value.
 
