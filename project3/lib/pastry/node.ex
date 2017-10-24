@@ -35,6 +35,7 @@ defmodule Pastry.Node do
             :num_reqs => args[:numRequests],
             :num_nodes => args[:numNodes],
             :map => %{},
+            :total_hops => 0, # total # of hops traversed when retrieving items during lifetime
             :routing_table => routing_table,
             :leaf_set => %{:larger => Heap.new(&(gt(&1, &2))), :smaller => Heap.new(&(lt(&1, &2)))}}} 
     end
@@ -51,62 +52,52 @@ defmodule Pastry.Node do
         cond do
             next_id == state[:id] ->
                 new_map = Map.put(state[:map], kv[:key], kv[:value])
+                Logger.debug "Placing key #{kv[:key]} with node #{state[:id]}"                
                 {:reply, :ok, %{
                     :id => state[:id],
                     :num_reqs => state[:num_reqs],
                     :num_nodes => state[:num_nodes],
                     :map => new_map,
+                    :total_hops => state[:total_hops],
                     :routing_table => state[:routing_table],
                     :leaf_set => state[:leaf_set]}}
             row == -1 ->
-                Logger.info "Failed to store key #{kv[:key]}"
+                Logger.warn "Failed to store key #{kv[:key]}"
                 {:reply, :fail, state}
             true ->
-                Logger.info "Forwarding to #{next_id}"
                 resp = GenServer.call({:global, next_id}, {:store, kv})
                 {:reply, resp, state}            
           end  
     end
 
     @doc """
-    Retrieve the value at key "k"
-    """
-    def handle_call({:get, data}, _from, state) do
-        key = data[:key]
-        {row, next_id} = route(key, state)
-        cond do
-            next_id == state[:id] ->
-                {:reply, {Map.get(state[:map], key), data[:hops] + 1}, state}
-            row == -1 ->
-                Logger.info "failed to find key #{key} in the DHT"
-                {:reply, :fail, state}
-            true ->
-                resp = GenServer.call({:global, next_id}, {:get, %{:key => key, 
-                    :hops => data[:hops] + 1}})
-                {:reply, resp, state}    
-        end    
-    end
-
-    @doc """
-    TODO: Getting a cycle here causing a time-out when 3 nodes with same first letter
-    are in network
+    Main join feature
     """
     def handle_call({:join, data}, _from, state) do  
         key = data[:key]
         path = data[:path]
 
-        {row, next_id} = route(key, state)
+        # if state[:id] is the closest node in the network
+        # to the key, row_idx == shl(state[:id], key).
+        # row_idxs refers to the row of the routing table
+        # that needs to get updated in the joining node.
+        # When the next_id comes from the leaf set and 
+        # has a different prefix than the state[:id] but shared prefix with
+        # the incoming node, don't use the row_idx 
+        {row_idx, next_id} = route(key, state)
 
-        if row == -1 do
-            Logger.info "#{key} failed to join"
+        if row_idx == -1 do
+            Logger.warn "#{key} failed to join"
             {:reply, path, state}
         else
-            # send the step'th row of the routing table to key
+            shared_prefix_with_key = shl(key, state[:id], 0)
+            i = min(shared_prefix_with_key, row_idx)
             msg = %{
                 :id => state[:id],
-                :i => row,
-                :row => state[:routing_table] |> Enum.at(row)
+                :i => i,
+                :row => state[:routing_table] |> Enum.at(i)
             }
+
             GenServer.cast({:global, key}, {:update_routing, msg})
 
             if next_id == state[:id] do
@@ -115,7 +106,6 @@ defmodule Pastry.Node do
                 GenServer.cast({:global, key}, {:init_leaf_set, state[:leaf_set]})
                 {:reply, path ++ [state[:id]], state}
             else
-                #Logger.debug "Forwarding #{key} from #{state[:id]} to #{next_id}"
                 # pass on to the next
                 new_data = %{:key => key, :path => path ++ [state[:id]]}
                 reply = GenServer.call({:global, next_id}, {:join, new_data})
@@ -128,7 +118,7 @@ defmodule Pastry.Node do
     Go through leaf set and routing table, sending
     everyone your id
     """
-    def handle_call({:update_all_after_join}, _from, state) do
+    def handle_call(:update_all_after_join, _from, state) do
         Enum.map(state[:leaf_set][:smaller], fn id -> 
             GenServer.cast({:global, id}, {:announce_arrival, state[:id]}) end)
         Enum.map(state[:leaf_set][:larger], fn id -> 
@@ -153,20 +143,58 @@ defmodule Pastry.Node do
     @doc """
     FOR DEBUG
     """
-    def handle_call({:get_state}, _from, state) do
+    def handle_call(:get_state, _from, state) do
         {:reply, state, state}
     end
+
+    def handle_cast({:found, value}, state) do
+        Logger.debug "Retrieved #{value}" 
+        {:noreply, state}
+    end
+
     @doc """
-    Set a row of the routing table with the incoming msg
+    Retrieve the value at key "k"
     """
-    def handle_cast({:update_routing, msg}, state) do
-        new_table = copy_and_update(state[:routing_table],
-            msg[:i], msg[:row], msg[:id])
+    def handle_cast({:get, data}, state) do
+        key = data[:key]
+        {row, next_id} = route(key, state)
+        cond do
+            next_id == state[:id] ->
+                v = Map.get(state[:map], key)
+                if v == nil do
+                    Logger.debug "failed to find item with key #{key}, requested by #{data[:origin]}, search terminating at #{state[:id]}"
+                end
+                GenServer.cast({:global, data[:origin]}, {:found, v})
+            row == -1 ->
+                Logger.warn "failed to find key #{key} in the DHT"
+            true ->
+                GenServer.cast({:global, next_id}, {:get, data})    
+        end  
         {:noreply, %{
             :id => state[:id],
             :num_reqs => state[:num_reqs],
             :num_nodes => state[:num_nodes],
             :map => state[:map],
+            :total_hops => state[:total_hops] + 1,
+            :routing_table => state[:routing_table],
+            :leaf_set => state[:leaf_set]}}  
+    end
+
+    @doc """
+    Set a row of the routing table with the incoming msg
+    """
+    def handle_cast({:update_routing, msg}, state) do
+        # remove all entries in row that share common prefix > msg[:i] with state[:id]
+        row = remove_id_from_row(msg[:row], state[:id], msg[:i])
+
+        new_table = copy_and_update(state[:routing_table],
+            msg[:i], row, msg[:id])
+        {:noreply, %{
+            :id => state[:id],
+            :num_reqs => state[:num_reqs],
+            :num_nodes => state[:num_nodes],
+            :map => state[:map],
+            :total_hops => state[:total_hops],
             :routing_table => new_table,
             :leaf_set => state[:leaf_set]}}   
     end
@@ -177,6 +205,7 @@ defmodule Pastry.Node do
             :num_reqs => state[:num_reqs],
             :num_nodes => state[:num_nodes],            
             :map => state[:map],
+            :total_hops => state[:total_hops],
             :routing_table => state[:routing_table],
             :leaf_set => leaf_set}
         {:noreply, state}
@@ -206,35 +235,31 @@ defmodule Pastry.Node do
             :num_reqs => state[:num_reqs],
             :num_nodes => state[:num_nodes],            
             :map => state[:map],
+            :total_hops => state[:total_hops],
             :routing_table => new_table,
             :leaf_set => new_leaf_set}
         {:noreply, state}
     end
 
-    def handle_cast({:make_reqs}, state) do
-        total_hops = loop(state[:num_reqs], state, 0)
+    def handle_info({:make_reqs, n}, state) do
+        if n > 0 do
+            # make a random request
+            node = get_random_node(state[:id], state[:num_nodes])
+            k = Enum.random(state[:num_nodes]..state[:num_nodes]*2)
+            
+            # initiate a get request for an item in the DHT
+            GenServer.cast({:global, node},
+                {:get, %{:key => Pastry.CLI.hash(Pastry.CLI.item(k)), :origin => state[:id]}})
+            
+            # schedule for future
+            Process.send_after(self(), {:make_reqs, n - 1}, 1000)
+        end
         {:noreply, state}
     end
+
     ##############
-    # Main       #
+    # Helper Fns #
     ##############
-    def loop(n, state, total_hops) when n > 0 do
-        # make a random request
-        node = get_random_node(state[:id], state[:num_nodes])
-        k = Enum.random(state[:num_nodes]..state[:num_nodes]*2)
-        
-        {v, num_hops} = GenServer.call({:global, node},
-            {:get, %{:key => Pastry.CLI.hash(Pastry.CLI.item(k)), :hops => 0}})
-
-        IO.puts "Grabbed #{v} in num hops: #{num_hops}"
-        :timer.sleep(1000)
-        loop(n - 1, state, total_hops + num_hops)
-    end
-
-    def loop(_n, _state, total_hops) do 
-        total_hops
-    end
-
     def get_random_node(my_id, n) do
         node = Enum.random(0..n)  
         if my_id == Pastry.CLI.hash(Integer.to_string(node)) do
@@ -243,9 +268,7 @@ defmodule Pastry.Node do
             Pastry.CLI.hash(Integer.to_string(node))
         end      
     end
-    ##############
-    # Helper Fns #
-    ##############
+
     def copy_and_add_heap(new_heap, old_heap, id, new_id, i) when i > 0 and old_heap != nil do
         if new_id != "" && !Heap.member?(old_heap, new_id) do
             d = dist(new_id, id)
@@ -480,6 +503,21 @@ defmodule Pastry.Node do
          end) |> Enum.min_by(fn {x, _} -> x end)
     end
 
-    
+    @doc """
+    Given an ID and a threshold (prefix value), 
+    remove any ids from a row with geq prefix value
+    """
+    def remove_id_from_row(row, state_id, thresh) do
+        Enum.map(row, fn row_id ->
+            id = if row_id == nil do "" else row_id end 
+            new_id = if shl(id, state_id, 0) > thresh do
+                nil
+            else
+                row_id
+            end
+            new_id
+        end)
+    end
+
 
 end

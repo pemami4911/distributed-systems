@@ -118,4 +118,13 @@ defmodule NodeTest do
         IO.puts "Found #{vv} in #{hops} hops"
     end
 
+    test "remove id from row" do
+        row = [nil, nil, "ABCD", nil]
+        id = "AE43"
+        threshold = 0
+
+        assert Pastry.Node.remove_id_from_row(row, id, threshold) == [nil, nil, nil, nil]
+
+    end
+
 end
