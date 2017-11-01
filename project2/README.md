@@ -12,7 +12,7 @@ Build with
     
 Run with
 
-  `./project2 --numNodes $NUM_NODES$ --topology {line|2D|imp2D|full} --algorithm {gossip|push-sum}`
+  `./project2 --numNodes NUM_NODES --topology {line|2D|imp2D|full} --algorithm {gossip|push-sum}`
     
 ## What I Did
 
