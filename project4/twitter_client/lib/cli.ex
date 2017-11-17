@@ -5,11 +5,11 @@ defmodule Twitter.Client.CLI do
     name = opts[:username] |> String.to_atom
     args = [username: name] ++ [main: self()]
 
-    {:ok, _pid} = connect(args)
-    Twitter.Client.login(args[:username])
+    {:ok, client} = connect(args)
+    Twitter.Client.login(client)
 
     if opts[:send] do
-      Twitter.Client.send_tweet(args[:username], "this is my first tweet")
+      Twitter.Client.send_tweet(client, "this is my first tweet")
     else
       their_username = opts[:follow] |> String.to_atom
       Twitter.Client.follow(their_username)
