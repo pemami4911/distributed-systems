@@ -1,6 +1,9 @@
 # Twitter.Client
 
-**TODO: Add description**
+# Performance measures
+
+* tweets per second (total, per user)
+* follower distribution
 
 ## Installation
 

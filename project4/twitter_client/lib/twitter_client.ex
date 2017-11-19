@@ -23,6 +23,14 @@ defmodule Twitter.Client do
   end
 
   # API
+
+  @doc """
+    Send/receive tweets, occasionally retweeting? 
+  """
+  def simulate_activity(client, tps) do
+    # TODO
+  end
+
   def login(client) do
     state = :sys.get_state(client) 
     case GenServer.call({:global, Twitter.Engine}, {:auth, state[:username]}) do
@@ -42,7 +50,7 @@ defmodule Twitter.Client do
     state = :sys.get_state(client) 
     # generate uid
     uid = get_tweet_uid(state[:username], text)
-    tweet = %{:uid => uid, :body => text}
+    tweet = %{:author => state[:username], :uid => uid, :body => text}
     GenServer.cast({:global, Twitter.Engine}, {:publish, {state[:username], tweet}})
   end
 
@@ -59,7 +67,9 @@ defmodule Twitter.Client do
       end
     end)
     if tweet != nil do
-      send_tweet(client, tweet[:body])
+      name_string = tweet[:author] |> Atom.to_string 
+      text = "(RT) @" <> name_string <> ": " <> tweet[:body]    
+      send_tweet(client, text)
     else
       Logger.error("Couldn't locate tweet by uid, unable to RT")
     end
@@ -109,7 +119,10 @@ defmodule Twitter.Client do
   end
 
   defp display_and_store(tweet, state) do
-    Logger.info(tweet[:body])
+      # append username to front of tweet. 
+    name_string = tweet[:author] |> Atom.to_string 
+    text = "@" <> name_string <> ": " <> tweet[:body]
+    Logger.info(text)
     %{:main => state[:main],
       :username => state[:username],
       :TL => state[:TL] ++ [tweet]}
