@@ -6,7 +6,7 @@ defmodule Twitter.Client do
   require Logger
 
   def start_link(args) do
-    GenServer.start_link(__MODULE__, args, [{:name, {:global, self()}}])
+    GenServer.start_link(__MODULE__, args, [{:name, {:global, args[:username]}}])
   end
 
   def init(args) do
@@ -17,25 +17,42 @@ defmodule Twitter.Client do
   end
 
   # Callbacks
+  def handle_info({:sim, client, tps}, _state) do
+    # schedule tweets to be sent during the next second
+    rvs = Enum.map(1..tps, fn _ -> :rand.uniform end)
+    sum = Enum.reduce(rvs, fn (y, acc) -> y + acc end)
+    Enum.scan(rvs, 0, fn (rv, acc) ->
+      next = (rv / sum) + acc
+      Process.send_after(self(), {:rand_tweet, client}, next * 1000)
+      next end)
+    Process.send_after(self(), {:sim, client, tps}, 1000)
+  end
+
+  def handle_info({:rand_tweet, client}, _state) do
+    # shoot off a random tweet
+    len = :rand.uniform(200)
+    text = to_string(Enum.take_random(97..122, len))
+    send_tweet(client, text)
+  end
+
   def handle_cast({:tweet, tweet}, state) do
     state = display_and_store(tweet, state)
     {:noreply, state}
   end
 
   # API
-
   @doc """
     Send/receive tweets, occasionally retweeting? 
   """
   def simulate_activity(client, tps) do
-    # TODO
+    Process.send_after(self(), {:sim, client, tps}, 1000)
   end
 
   def login(client) do
     state = :sys.get_state(client) 
     case GenServer.call({:global, Twitter.Engine}, {:auth, state[:username]}) do
       :ok ->
-        Logger.info("Logged in successfully")
+        Logger.debug("Logged in successfully")
       :error -> 
         Logger.error("Unable to verify account")
     end
@@ -87,19 +104,21 @@ defmodule Twitter.Client do
     end)
   end
 
-  def follow(their_username) do
-    if GenServer.call({:global, Twitter.Engine}, {:subscribe, their_username}) != :ok do
+  def follow(client, their_username) do
+    state = :sys.get_state(client)
+    if GenServer.call({:global, Twitter.Engine}, {:subscribe, state[:username], their_username}) != :ok do
       Logger.error("Unable to follow user #{their_username |> Atom.to_string()}, maybe they aren't registered yet?")
     else
-      Logger.info("Followed #{their_username |> Atom.to_string()}")
+      Logger.debug("Followed #{their_username |> Atom.to_string()}")
     end
   end
 
-  def unfollow(their_username) do
-    if GenServer.call({:global, Twitter.Engine}, {:unsubscribe, their_username}) != :ok do
+  def unfollow(client, their_username) do
+    state = :sys.get_state(client)
+    if GenServer.call({:global, Twitter.Engine}, {:unsubscribe, state[:username], their_username}) != :ok do
       Logger.error("Unable to unfollow user #{their_username |> Atom.to_string()}, maybe they aren't registered yet?")
     else
-      Logger.info("Unfollowed #{their_username |> Atom.to_string()}")
+      Logger.debug("Unfollowed #{their_username |> Atom.to_string()}")
     end
   end
 
@@ -122,7 +141,7 @@ defmodule Twitter.Client do
       # append username to front of tweet. 
     name_string = tweet[:author] |> Atom.to_string 
     text = "@" <> name_string <> ": " <> tweet[:body]
-    Logger.info(text)
+    Logger.debug(text)
     %{:main => state[:main],
       :username => state[:username],
       :TL => state[:TL] ++ [tweet]}

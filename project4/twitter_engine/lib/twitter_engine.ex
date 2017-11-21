@@ -38,27 +38,30 @@ defmodule Twitter.Engine do
   @doc """
   Adds `from` to the topic list of `user`.
   """
-  def handle_call({:subscribe, user}, from, topics) do
-    {_, topics} = 
+  def handle_call({:subscribe, requester, user}, _from, topics) do
+    {res, topics} = 
       try do
-        {pid, _} = from
         Map.get_and_update!(topics, user, fn fllwrs -> 
-          {fllwrs, MapSet.put(fllwrs, pid)} end)
-      catch
-        _ -> {nil, topics}
+          {fllwrs, MapSet.put(fllwrs, requester)} end)
+      rescue
+        _ in KeyError -> {:error, topics}
       end 
-      {:reply, :ok, topics}
+      if res == :error do
+        IO.inspect topics
+        {:reply, :error, topics}
+      else
+        {:reply, :ok, topics}
+      end
   end
 
   @doc """
   Removes `from` from the topic list `user`
   """
-  def handle_call({:unsusbscribe, user}, from, topics) do
+  def handle_call({:unsusbscribe, requester, user}, _from, topics) do
     {_, topics} = 
       try do
-        {pid, _} = from
         Map.get_and_update!(topics, user, fn fllwrs ->
-          {fllwrs, MapSet.delete(fllwrs, pid)} end)
+          {fllwrs, MapSet.delete(fllwrs, requester)} end)
       catch
         _ -> {nil, topics}
       end
