@@ -17,22 +17,23 @@ defmodule Twitter.Client do
   end
 
   # Callbacks
-  def handle_info({:sim, client, tps}, _state) do
-    # schedule tweets to be sent during the next second
-    rvs = Enum.map(1..tps, fn _ -> :rand.uniform end)
-    sum = Enum.reduce(rvs, fn (y, acc) -> y + acc end)
-    Enum.scan(rvs, 0, fn (rv, acc) ->
-      next = (rv / sum) + acc
-      Process.send_after(self(), {:rand_tweet, client}, next * 1000)
-      next end)
-    Process.send_after(self(), {:sim, client, tps}, 1000)
-  end
-
-  def handle_info({:rand_tweet, client}, _state) do
+  def handle_info({:sim, client, tp}, state) do
+    # send next tweet
     # shoot off a random tweet
-    len = :rand.uniform(200)
+    len = :rand.uniform(20)
     text = to_string(Enum.take_random(97..122, len))
-    send_tweet(client, text)
+    send_tweet(client, text, state)
+
+    tmp = tp + :rand.normal(0, 0.1)   
+    next = 
+      if tmp < 0.01 do
+        0.01
+      else
+        tmp
+      end
+
+    Process.send_after(client, {:sim, client, tp}, round(next * 1000))
+    {:noreply, state}
   end
 
   def handle_cast({:tweet, tweet}, state) do
@@ -44,31 +45,40 @@ defmodule Twitter.Client do
   @doc """
     Send/receive tweets, occasionally retweeting? 
   """
-  def simulate_activity(client, tps) do
-    Process.send_after(self(), {:sim, client, tps}, 1000)
+  def simulate_activity(client, tp) do
+    Process.send(client, {:sim, client, tp}, [])
   end
 
   def login(client) do
     state = :sys.get_state(client) 
     case GenServer.call({:global, Twitter.Engine}, {:auth, state[:username]}) do
       :ok ->
-        Logger.debug("Logged in successfully")
+        Logger.debug("@#{state[:username]} logged in successfully")
       :error -> 
-        Logger.error("Unable to verify account")
+        Logger.error("@#{state[:username]} unable to verify account")
     end
   end
 
   def logout(client) do
-    state = :sys.get_state(client) 
-    Process.send(state[:main], :done, [])
+    state = :sys.get_state(client)
+    if state[:main] != nil do
+      Process.send(state[:main], :done, [])
+    else
+      System.halt(0)
+    end
   end
   
-  def send_tweet(client, text) do
-    state = :sys.get_state(client) 
+  def send_tweet(client, text, state \\ nil) do
+    curr_state = 
+      if state == nil do
+        :sys.get_state(client)
+      else
+        state
+      end 
     # generate uid
-    uid = get_tweet_uid(state[:username], text)
-    tweet = %{:author => state[:username], :uid => uid, :body => text}
-    GenServer.cast({:global, Twitter.Engine}, {:publish, {state[:username], tweet}})
+    uid = get_tweet_uid(curr_state[:username], text)
+    tweet = %{:author => curr_state[:username], :uid => uid, :body => text}
+    GenServer.cast({:global, Twitter.Engine}, {:publish, {curr_state[:username], tweet}})
   end
 
   @doc """
@@ -88,8 +98,18 @@ defmodule Twitter.Client do
       text = "(RT) @" <> name_string <> ": " <> tweet[:body]    
       send_tweet(client, text)
     else
-      Logger.error("Couldn't locate tweet by uid, unable to RT")
+      Logger.error("@#{state[:username]} couldn't locate tweet by uid, unable to RT")
     end
+  end
+
+  @doc """
+  Display the top K from the TL 
+  """
+  def top_k(client, k) do
+    state = :sys.get_state(client)
+    Enum.slice(state[:TL], 0..k-1)
+      |> Enum.map(fn tweet -> 
+        prepare_tweet(tweet) |> Logger.info end)
   end
 
   @doc """
@@ -107,25 +127,25 @@ defmodule Twitter.Client do
   def follow(client, their_username) do
     state = :sys.get_state(client)
     if GenServer.call({:global, Twitter.Engine}, {:subscribe, state[:username], their_username}) != :ok do
-      Logger.error("Unable to follow user #{their_username |> Atom.to_string()}, maybe they aren't registered yet?")
+      Logger.error("@#{state[:username]} unable to follow user #{their_username |> Atom.to_string()}, maybe they aren't registered yet?")
     else
-      Logger.debug("Followed #{their_username |> Atom.to_string()}")
+      Logger.debug("@#{state[:username]} followed @#{their_username |> Atom.to_string()}")
     end
   end
 
   def unfollow(client, their_username) do
     state = :sys.get_state(client)
     if GenServer.call({:global, Twitter.Engine}, {:unsubscribe, state[:username], their_username}) != :ok do
-      Logger.error("Unable to unfollow user #{their_username |> Atom.to_string()}, maybe they aren't registered yet?")
+      Logger.error("U@#{state[:username]} unable to unfollow user #{their_username |> Atom.to_string()}, maybe they aren't registered yet?")
     else
-      Logger.debug("Unfollowed #{their_username |> Atom.to_string()}")
+      Logger.debug("@#{state[:username]} unfollowed #{their_username |> Atom.to_string()}")
     end
   end
 
   def delete_account(client) do
     state = :sys.get_state(client)
     if GenServer.call({:global, Twitter.Engine}, {:delete_user, state[:username]}) != :ok do
-      Logger.error("Unable to delete user #{state[:username] |> Atom.to_string()}, maybe they aren't registered?")
+      Logger.error("@#{state[:username]} unable to delete user #{state[:username] |> Atom.to_string()}, maybe they aren't registered?")
     end
   end
 
@@ -137,14 +157,21 @@ defmodule Twitter.Client do
     end
   end
 
-  defp display_and_store(tweet, state) do
+  defp display_and_store(tweet, state, display \\ true) do
       # append username to front of tweet. 
-    name_string = tweet[:author] |> Atom.to_string 
-    text = "@" <> name_string <> ": " <> tweet[:body]
-    Logger.debug(text)
+    text = prepare_tweet(tweet)
+    if display do
+      Logger.debug(text)
+    end
     %{:main => state[:main],
       :username => state[:username],
-      :TL => state[:TL] ++ [tweet]}
+      :TL => [tweet | state[:TL]]}
+  end
+
+  defp prepare_tweet(tweet) do
+    author = tweet[:author] |> Atom.to_string
+    body = tweet[:body]
+    "@" <> author <> ": " <> body
   end
 
   defp get_tweet_uid(username, tweet) do

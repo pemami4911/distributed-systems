@@ -25,14 +25,13 @@ Various helper fns for running Twitter simulations
 
     # Parse the config file
     cfg = parse_config(opts[:config])
-    IO.inspect cfg
     u_names = generate_usernames(parse_int(cfg["users"]))
+    IO.inspect u_names
     
     # Bring up all clients, returning a list of all of the PIDs
     clients = 
       Enum.map(u_names, fn u_name -> 
         args = init_user(opts[:main], u_name)
-        IO.inspect args
         {:ok, pid} = Twitter.Client.start_link(args)
         pid
       end)
@@ -41,14 +40,8 @@ Various helper fns for running Twitter simulations
     followers(clients, u_names, cfg)
 
     # Have each client start tweeting
-    tps = parse_int(cfg["tweets_per_sec"]) / parse_int(cfg["users"])
-
-    if tps < 1.0 do
-      Logger.error "TPS must be > 1"
-      System.halt(0)
-    end
-
-    sim_start(clients, tps)
+    tweet_period = 1 / parse_float(cfg["tweet_freq"])
+    sim_start(clients, tweet_period)
   end
 
   defp parse_int(x) do
@@ -85,13 +78,20 @@ Various helper fns for running Twitter simulations
   defp followers(clients, usernames, cfg) do
     # for each client
     Enum.map(clients, fn client -> 
+      # My username
+      state = :sys.get_state(client)
+      my_name = state[:username] |> Atom.to_string
       # login 
       Twitter.Client.login(client)
       # randomly sample from Zipf distribution
       n_fllwrs = round(Twitter.Sim.Zipf.sample(parse_int(cfg["users"]), 
         parse_float(cfg["skew"])))
       # randomly sample n_fllwrs uniformly from usernames
-      u_names = Enum.take_random(usernames, n_fllwrs)
+      # remove yourself if you are in u_names
+      u_names = 
+        Enum.take_random(usernames, n_fllwrs)
+          |> Enum.take_while(fn n -> n != my_name end)
+      
       # follow each of them
       Enum.map(u_names, fn u_name ->
         u_name_ = u_name |> String.to_atom
@@ -100,9 +100,9 @@ Various helper fns for running Twitter simulations
     end)
   end
 
-  defp sim_start(clients, tps) do
+  defp sim_start(clients, tp) do
     Enum.map(clients, fn client ->
-      Twitter.Client.simulate_activity(client, tps) end)
+      Twitter.Client.simulate_activity(client, tp) end)
   end
 
 end

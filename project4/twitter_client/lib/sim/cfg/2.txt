@@ -1,0 +1,3 @@
+users=1000
+skew=0.8
+tweet_freq=2
