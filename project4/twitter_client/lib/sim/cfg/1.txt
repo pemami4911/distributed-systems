@@ -1,3 +1,5 @@
-users=3
-skew=0.6
+users=2
+skew=0.7
 tweet_freq=1
+active=1.0
+inactive=1.0

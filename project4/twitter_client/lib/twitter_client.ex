@@ -13,16 +13,18 @@ defmodule Twitter.Client do
     # Check that the user is registered already, if not - register
     register(args)
     {:ok, %{:main => args[:main], :username => args[:username],
-      :TL => []}}
+      :TL => [], :status => :active, :transition => args[:transition]}}
   end
 
   # Callbacks
   def handle_info({:sim, client, tp}, state) do
-    # send next tweet
-    # shoot off a random tweet
-    len = :rand.uniform(20)
-    text = to_string(Enum.take_random(97..122, len))
-    send_tweet(client, text, state)
+    if state[:status] == :active do
+      # send next tweet
+      # shoot off a random tweet
+      len = :rand.uniform(20)
+      text = to_string(Enum.take_random(97..122, len))
+      send_tweet(client, text, state)
+    end
 
     tmp = tp + :rand.normal(0, 0.1)   
     next = 
@@ -31,6 +33,35 @@ defmodule Twitter.Client do
       else
         tmp
       end
+
+    # do a status transition 
+    roll = :rand.uniform
+    state = 
+      if state[:status] == :active do
+        # change status to inactite
+        state = if roll > Enum.at(Enum.at(state[:transition], 0), 0) do
+          Logger.info("@#{state[:username]} Logging off")
+          %{:main => state[:main],
+          :username => state[:username],
+          :TL => state[:TL],
+          :status => :inactive,
+          :transition => state[:transition]}
+        else
+          state
+        end
+        state
+      else
+        state = if roll > Enum.at(Enum.at(state[:transition], 1), 1) do
+          Logger.info("@#{state[:username]} Logging on")
+          %{:main => state[:main],
+          :username => state[:username],
+          :TL => state[:TL],
+          :status => :active,
+          :transition => state[:transition]}
+          else
+            state
+          end
+      end  
 
     Process.send_after(client, {:sim, client, tp}, round(next * 1000))
     {:noreply, state}
@@ -56,15 +87,6 @@ defmodule Twitter.Client do
         Logger.debug("@#{state[:username]} logged in successfully")
       :error -> 
         Logger.error("@#{state[:username]} unable to verify account")
-    end
-  end
-
-  def logout(client) do
-    state = :sys.get_state(client)
-    if state[:main] != nil do
-      Process.send(state[:main], :done, [])
-    else
-      System.halt(0)
     end
   end
   
@@ -165,7 +187,9 @@ defmodule Twitter.Client do
     end
     %{:main => state[:main],
       :username => state[:username],
-      :TL => [tweet | state[:TL]]}
+      :TL => [tweet | state[:TL]],
+      :status => state[:status],
+      :transition => state[:transition]}
   end
 
   defp prepare_tweet(tweet) do

@@ -28,10 +28,18 @@ Various helper fns for running Twitter simulations
     u_names = generate_usernames(parse_int(cfg["users"]))
     IO.inspect u_names
     
+    # Status transition map
+    #           active inactive
+    # activate [ 0.95    0.05  ]
+    # inactive [ 0.1     0.9   ]
+
+    transition = [[parse_float(cfg["active"]), 1 - parse_float(cfg["active"])],
+                 [1 - parse_float(cfg["inactive"]), parse_float(cfg["inactive"])]]
+
     # Bring up all clients, returning a list of all of the PIDs
     clients = 
       Enum.map(u_names, fn u_name -> 
-        args = init_user(opts[:main], u_name)
+        args = init_user(opts[:main], u_name, transition)
         {:ok, pid} = Twitter.Client.start_link(args)
         pid
       end)
@@ -69,9 +77,9 @@ Various helper fns for running Twitter simulations
   end
 
   # Args for initializing a Twitter client
-  defp init_user(main, name) do
+  defp init_user(main, name, transition) do
     name_ = name |> String.to_atom
-    [username: name_, main: main] 
+    [username: name_, main: main, transition: transition] 
   end
 
   # Allocate followers according to Zipf distribution
@@ -81,8 +89,6 @@ Various helper fns for running Twitter simulations
       # My username
       state = :sys.get_state(client)
       my_name = state[:username] |> Atom.to_string
-      # login 
-      Twitter.Client.login(client)
       # randomly sample from Zipf distribution
       n_fllwrs = round(Twitter.Sim.Zipf.sample(parse_int(cfg["users"]), 
         parse_float(cfg["skew"])))
