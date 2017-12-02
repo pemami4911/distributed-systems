@@ -29,6 +29,11 @@ defmodule Twitter.Engine do
     {:noreply, state}
   end
 
+  def handle_cast(:shutdown, state) do
+    System.halt(0)
+    {:noreply, state}
+  end
+
   def handle_call(:tweet_count, _from, state) do
     {:reply, state[:num_tweets_sent], state}
   end

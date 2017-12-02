@@ -17,13 +17,20 @@ defmodule Twitter.Client do
   end
 
   # Callbacks
-  def handle_info({:sim, client, tp}, state) do
+  def handle_info({:sim, client, tp, rt_prob}, state) do
     if state[:status] == :active do
-      # send next tweet
-      # shoot off a random tweet
-      len = :rand.uniform(20)
-      text = to_string(Enum.take_random(97..122, len))
-      send_tweet(client, text, state)
+      roll = :rand.uniform
+      if roll > rt_prob do
+        # send next tweet
+        # shoot off a random tweet
+        len = :rand.uniform(20)
+        text = to_string(Enum.take_random(97..122, len))
+        send_tweet(client, text, state)
+      else
+        # do a random RT
+        rand_tweet = Enum.take_random(state[:TL], 1) |> Enum.at(0)
+        retweet(client, rand_tweet[:uid], state)
+      end
     end
 
     tmp = tp + :rand.normal(0, 0.1)   
@@ -40,7 +47,7 @@ defmodule Twitter.Client do
       if state[:status] == :active do
         # change status to inactite
         state = if roll > Enum.at(Enum.at(state[:transition], 0), 0) do
-          Logger.info("@#{state[:username]} Logging off")
+          #Logger.info("@#{state[:username]} Logging off")
           %{:main => state[:main],
           :username => state[:username],
           :TL => state[:TL],
@@ -52,7 +59,7 @@ defmodule Twitter.Client do
         state
       else
         state = if roll > Enum.at(Enum.at(state[:transition], 1), 1) do
-          Logger.info("@#{state[:username]} Logging on")
+          #Logger.info("@#{state[:username]} Logging on")
           %{:main => state[:main],
           :username => state[:username],
           :TL => state[:TL],
@@ -63,7 +70,7 @@ defmodule Twitter.Client do
           end
       end  
 
-    Process.send_after(client, {:sim, client, tp}, round(next * 1000))
+    Process.send_after(client, {:sim, client, tp, rt_prob}, round(next * 1000))
     {:noreply, state}
   end
 
@@ -76,8 +83,8 @@ defmodule Twitter.Client do
   @doc """
     Send/receive tweets, occasionally retweeting? 
   """
-  def simulate_activity(client, tp) do
-    Process.send(client, {:sim, client, tp}, [])
+  def simulate_activity(client, tweet_period, rt_prob) do
+    Process.send(client, {:sim, client, tweet_period, rt_prob}, [])
   end
 
   def login(client) do
@@ -106,9 +113,14 @@ defmodule Twitter.Client do
   @doc """
   Search through the TL, find the tweet with the uid, and then send it out.
   """
-  def retweet(client, tweet_uid) do
-    state = :sys.get_state(client)
-    tweet = Enum.find(state[:TL], fn tweet ->
+  def retweet(client, tweet_uid, state \\ nil) do
+    curr_state = 
+      if state == nil do
+        :sys.get_state(client)
+      else
+        state
+      end 
+    tweet = Enum.find(curr_state[:TL], fn tweet ->
       if tweet[:uid] == tweet_uid do
         true
       else
@@ -118,7 +130,7 @@ defmodule Twitter.Client do
     if tweet != nil do
       name_string = tweet[:author] |> Atom.to_string 
       text = "(RT) @" <> name_string <> ": " <> tweet[:body]    
-      send_tweet(client, text)
+      send_tweet(client, text, curr_state)
     else
       Logger.error("@#{state[:username]} couldn't locate tweet by uid, unable to RT")
     end

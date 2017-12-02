@@ -1,0 +1,7 @@
+experiment=Conn_50_Act_0.99_Inact_0.95
+users=50
+skew=0.9
+tweet_freq=1
+active=0.99
+inactive=0.95
+topk_freq=100

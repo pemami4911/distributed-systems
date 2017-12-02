@@ -1,0 +1,7 @@
+experiment=User_Stress_1000
+users=1000
+skew=0.9
+tweet_freq=1
+active=0.95
+inactive=0.99
+topk_freq=100

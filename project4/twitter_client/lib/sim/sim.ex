@@ -43,13 +43,21 @@ Various helper fns for running Twitter simulations
         {:ok, pid} = Twitter.Client.start_link(args)
         pid
       end)
-
+    
     # Have each client login and then follow others
-    followers(clients, u_names, cfg)
+    # compute the clients with topK # of followers
+    topk = followers(clients, u_names, cfg)
 
+    topk_tweet_period = 
+      if parse_int(cfg["topk_freq"]) > 100 do
+        1 / (parse_float(cfg["tweet_freq"]) * (parse_float(cfg["topk_freq"]) / 100))
+      else
+        1 / parse_float(cfg["tweet_freq"])
+      end
     # Have each client start tweeting
-    tweet_period = 1 / parse_float(cfg["tweet_freq"])
-    sim_start(clients, tweet_period)
+    reg_tweet_period = 1 / parse_float(cfg["tweet_freq"])
+    sim_start(clients, topk, reg_tweet_period, topk_tweet_period)
+    cfg["experiment"]
   end
 
   defp parse_int(x) do
@@ -85,30 +93,42 @@ Various helper fns for running Twitter simulations
   # Allocate followers according to Zipf distribution
   defp followers(clients, usernames, cfg) do
     # for each client
-    Enum.map(clients, fn client -> 
-      # My username
-      state = :sys.get_state(client)
-      my_name = state[:username] |> Atom.to_string
-      # randomly sample from Zipf distribution
-      n_fllwrs = round(Twitter.Sim.Zipf.sample(parse_int(cfg["users"]), 
-        parse_float(cfg["skew"])))
-      # randomly sample n_fllwrs uniformly from usernames
-      # remove yourself if you are in u_names
-      u_names = 
-        Enum.take_random(usernames, n_fllwrs)
-          |> Enum.take_while(fn n -> n != my_name end)
-      
-      # follow each of them
-      Enum.map(u_names, fn u_name ->
-        u_name_ = u_name |> String.to_atom
-        Twitter.Client.follow(client, u_name_)
+    client_followers = 
+      Enum.map(clients, fn client -> 
+        # My username
+        state = :sys.get_state(client)
+        my_name = state[:username] |> Atom.to_string
+        # randomly sample from Zipf distribution
+        n_fllwrs = round(Twitter.Sim.Zipf.sample(parse_int(cfg["users"]), 
+          parse_float(cfg["skew"])))
+        # randomly sample n_fllwrs uniformly from usernames
+        # remove yourself if you are in u_names
+        u_names = 
+          Enum.take_random(usernames, n_fllwrs)
+            |> Enum.take_while(fn n -> n != my_name end)
+        
+        # follow each of them
+        Enum.each(u_names, fn u_name ->
+          u_name_ = u_name |> String.to_atom
+          Twitter.Client.follow(client, u_name_)
+        end)
+        {client, n_fllwrs}
       end)
-    end)
+    # return the topK clients in terms of # followers
+    Enum.sort_by(client_followers, fn {_client, n_fllwrs} -> n_fllwrs end)
+      |> Enum.take(3)
+      |> Enum.map(fn {client, _n_fllwrs} -> client end)
   end
 
-  defp sim_start(clients, tp) do
-    Enum.map(clients, fn client ->
-      Twitter.Client.simulate_activity(client, tp) end)
+  defp sim_start(clients, topk, reg_tp, topk_tp) do
+    Enum.each(clients, fn client ->
+      if Enum.member?(topk, client) do
+        # send over the topk tweet period (higher freq) and retweet prob of 1%
+        Twitter.Client.simulate_activity(client, topk_tp, 0.01)
+      else
+        Twitter.Client.simulate_activity(client, reg_tp, 0)
+      end
+    end)
   end
 
 end

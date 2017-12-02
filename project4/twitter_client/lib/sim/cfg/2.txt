@@ -3,3 +3,4 @@ skew=0.8
 tweet_freq=2
 active=0.92
 inactive=0.98
+topk_freq=150

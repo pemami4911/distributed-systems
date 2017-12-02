@@ -1,0 +1,7 @@
+experiment=TopK_1000_TPS_2
+users=1000
+skew=0.9
+tweet_freq=1
+active=1
+inactive=1
+topk_freq=200

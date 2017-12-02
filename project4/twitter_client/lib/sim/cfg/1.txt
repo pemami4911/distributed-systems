@@ -1,5 +1,6 @@
-users=2
+users=5
 skew=0.7
 tweet_freq=1
 active=1.0
 inactive=1.0
+topk_freq=125

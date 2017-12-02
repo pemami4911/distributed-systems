@@ -4,7 +4,7 @@ defmodule Twitter.Engine.CLI do
         Node.set_cookie(:"pemami")
         Twitter.Engine.start_link(args)
         IO.puts "Connected at #{Node.self}, starting Twitter Engine..."
-        Twitter.Engine.TweetCount.start_link(args)
+        #Twitter.Engine.TweetCount.start_link(args)
         receive do
           {:done, _msg} ->
             System.halt(0)
