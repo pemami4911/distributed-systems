@@ -17,6 +17,11 @@ defmodule TwitterWeb.Router do
     pipe_through :browser # Use the default browser stack
 
     get "/", PageController, :index
+    get "/home", HomeController, :show
+    get "/register", RegisterController, :show
+    post "register/:user", RegisterController, :create
+    get "/search", SearchController, :show
+    post "/follow/:user", FollowController, :put
   end
 
   # Other scopes may use custom stacks.
