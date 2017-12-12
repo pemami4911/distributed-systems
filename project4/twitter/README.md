@@ -89,3 +89,6 @@ Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
     5. If no user already exists with this username, the db is updated and success is returned
     6. On success, the user is redirected to "localhost:4000/home"
     7. On failure, an error dialogue or indicator is displayed and the user is prompted to try different credentials
+
+# TODO
+* Replace old Twitter Client (copy it) calls to GenServer to use websockets to talk to the new engine
