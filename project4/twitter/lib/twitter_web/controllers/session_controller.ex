@@ -37,8 +37,9 @@ defmodule TwitterWeb.SessionController do
         case result do
             {:ok, conn} ->
                 conn
+                |> assign(:username, username)
                 #|> put_flash(:info, "You’re now logged in!")
-                |> redirect(to: "/api/sessions/show")
+                |> redirect(to: session_path(conn, :show, username))
             {:error, _reason, conn} ->
                 conn
                 |> put_flash(:error, "Invalid username/password combination")

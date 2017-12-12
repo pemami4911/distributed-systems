@@ -42,7 +42,10 @@ defmodule Twitter.Mixfile do
       {:gettext, "~> 0.11"},
       {:cowboy, "~> 1.0"},
       {:comeonin, "~> 2.5"},
-      {:guardian, "~> 0.12.0"}
+      {:guardian, "~> 0.12.0"},
+      {:phoenix_gen_socket_client, "~> 2.0.0"},
+      {:poison, "~> 2.0"},
+      {:websocket_client, "~> 1.2"}
     ]
   end
 

@@ -13,7 +13,7 @@ defmodule Twitter.Application do
       # Start the endpoint when the application starts
       supervisor(TwitterWeb.Endpoint, []),
       # Start your own worker by calling: Twitter.Worker.start_link(arg1, arg2, arg3)
-      # worker(Twitter.Worker, [arg1, arg2, arg3]),
+      worker(Twitter.SocketClient, []),
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

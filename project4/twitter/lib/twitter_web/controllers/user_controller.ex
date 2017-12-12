@@ -6,7 +6,7 @@ defmodule TwitterWeb.UserController do
 
   def show(conn, %{"id" => id}) do
     user = Repo.get!(Twitter.User, id)
-    render(conn, "show.html", user: user)
+    redirect(conn, session_path(conn, :show, user))
   end
   
   def new(conn, params) do
