@@ -54,13 +54,13 @@ let socket = new Socket("/socket", {params: {token: window.userToken}})
 socket.connect()
 
 // Now that you are connected, you can join channels with a topic:
-let channel           = socket.channel("room:lobby", {})
+let channel           = socket.channel("twitter:", {})
 let chatInput         = document.querySelector("#chat-input")
 let messagesContainer = document.querySelector("#messages")
 
 chatInput.addEventListener("keypress", event => {
   if(event.keyCode === 13){
-    channel.push("new_msg", {body: chatInput.value})
+    channel.push("new_tweet", {body: chatInput.value})
     chatInput.value = ""
   }
 })

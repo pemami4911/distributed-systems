@@ -10,22 +10,26 @@ defmodule TwitterWeb.Router do
   end
 
   pipeline :api do
-    plug :accepts, ["json"]
+    plug :accepts, ["html", "json"]
+    plug :fetch_session
+    plug :fetch_flash
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers    
   end
 
   scope "/", TwitterWeb do
     pipe_through :browser # Use the default browser stack
 
-    get "/", PageController, :index
-    get "/home", HomeController, :show
-    get "/register", RegisterController, :show
-    post "register/:user", RegisterController, :create
-    get "/search", SearchController, :show
-    post "/follow/:user", FollowController, :put
+    get "/", LoginController, :index
+    get "/hello", HelloController, :index
+    get "/hello/:messenger", HelloController, :show
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", TwitterWeb do
-  #   pipe_through :api
-  # end
+  scope "/api", TwitterWeb do
+    pipe_through :api
+
+    resources "/users", UserController, only: [:new, :create]
+    resources "/sessions", SessionController, only: [:show, :new, :create, :delete]
+    post "/follow/:user", FollowController, :show
+  end
 end

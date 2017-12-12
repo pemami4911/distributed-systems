@@ -25,3 +25,10 @@ config :logger, :console,
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{Mix.env}.exs"
+
+config :guardian, Guardian,
+ issuer: "Twitter.#{Mix.env}",
+ ttl: {30, :days},
+ verify_issuer: true,
+ serializer: Twitter.GuardianSerializer,
+ secret_key: to_string(Mix.env) <> "yyeeeaabooiii"

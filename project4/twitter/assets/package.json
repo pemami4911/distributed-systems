@@ -5,7 +5,14 @@
     "deploy": "brunch build --production",
     "watch": "brunch watch --stdin"
   },
+  "author": {
+    "name": "Patrick Emami",
+    "email": "patrickemami@gmail.com"
+  },
   "dependencies": {
+    "bootstrap": "^3.3.7",
+    "font-awesome": "^4.7.0",
+    "jquery": "^3.2.1",
     "phoenix": "file:../deps/phoenix",
     "phoenix_html": "file:../deps/phoenix_html"
   },
