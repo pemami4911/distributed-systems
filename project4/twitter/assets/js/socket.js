@@ -53,26 +53,53 @@ let socket = new Socket("/socket", {params: {token: window.userToken}})
 
 socket.connect()
 
+var topics = {}
+var tweets = []
 // Now that you are connected, you can join channels with a topic:
-let channel           = socket.channel("twitter:", {})
+let username          = document.querySelector("#username").innerText;
+topics[username]      = socket.channel("twitter:" +  username, {})
+topics[username].on("new_tweet", payload => tweetCallback(payload))
+topics[username].join()
+  .receive("ok", resp => { console.log("Joined successfully", resp) })
+  .receive("error", resp => { console.log("Unable to join", resp) }) 
+
 let chatInput         = document.querySelector("#chat-input")
+let sendTweetButton   = document.querySelector("#send-tweet")
+let followInput       = document.querySelector("#follow-input")
+let followButton      = document.querySelector("#followBtn")
 let messagesContainer = document.querySelector("#messages")
 
-chatInput.addEventListener("keypress", event => {
-  if(event.keyCode === 13){
-    channel.push("new_tweet", {body: chatInput.value})
+sendTweetButton.addEventListener("click", event => {
+  var tweet = chatInput.value;
+  if (tweet.length < 280 && tweet != "") {
+    topics[username].push("new_tweet", {body: "@" + username + ": " + tweet})
     chatInput.value = ""
   }
 })
 
-channel.on("new_tweet", payload => {
-  let messageItem = document.createElement("li");
-  messageItem.innerText = `[${Date()}] ${payload.body}`
-  messagesContainer.appendChild(messageItem)
+followButton.addEventListener("click", event => {
+  var their_username = followInput.value;
+  if (their_username != "" && their_username.length < 32) {
+    topics[their_username] = socket.channel("twitter:" + their_username, {})
+    try {
+      topics[their_username].on("new_tweet", payload => tweetCallback(payload)) 
+    } catch(err) {
+      console.log(err)
+    }  
+    topics[their_username].join()
+      .receive("ok", resp => { console.log("Joined successfully", resp) })
+      .receive("error", resp => { alert("Unable to follow" + their_username) }) 
+    followInput.value = ""
+  }
 })
 
-channel.join()
-  .receive("ok", resp => { console.log("Joined successfully", resp) })
-  .receive("error", resp => { console.log("Unable to join", resp) })
+// Some helper funs
+var tweetCallback = function(payload) {
+  let messageItem = document.createElement("li");
+  messageItem.classList.add("list-group-item");
+  messageItem.innerText = `[${Date().split('GMT')[0].trim()}] ${payload.body}`
+  messagesContainer.appendChild(messageItem)
+  tweets.push(payload.body)
+}
 
 export default socket

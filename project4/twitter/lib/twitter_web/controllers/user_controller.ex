@@ -4,9 +4,8 @@ defmodule TwitterWeb.UserController do
 
   plug :scrub_params, "user" when action in [:create]
 
-  def show(conn, %{"id" => id}) do
-    user = Repo.get!(Twitter.User, id)
-    redirect(conn, session_path(conn, :show, user))
+  def show(conn, %{"id" => username}) do
+    redirect(conn, to: session_path(conn, :show, username))
   end
   
   def new(conn, params) do
@@ -15,15 +14,13 @@ defmodule TwitterWeb.UserController do
   end
   
   def create(conn, %{"user" => user_params}) do
+    IO.inspect user_params
     changeset = %Twitter.User{} |> Twitter.User.registration_changeset(user_params)
     res = Repo.insert(changeset)
-    IO.inspect res
-
     case res do
       {:ok, user} ->
         conn
-        |> put_flash(:info, "#{user.username} created!")
-        |> redirect(to: user_path(conn, :show, user))
+        |> redirect(to: user_path(conn, :show, user_params["username"]))
       {:error, changeset} ->
         render(conn, "new.html", changeset: changeset)
     end

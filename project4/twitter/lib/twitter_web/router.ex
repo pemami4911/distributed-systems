@@ -39,7 +39,7 @@ defmodule TwitterWeb.Router do
   scope "/api", TwitterWeb do
     pipe_through :api
 
-    resources "/users", UserController, only: [:new, :create]
+    resources "/users", UserController, only: [:show, :new, :create]
     resources "/sessions", SessionController, only: [:show, :new, :create, :delete]
     post "/follow/:user", FollowController, :show
   end

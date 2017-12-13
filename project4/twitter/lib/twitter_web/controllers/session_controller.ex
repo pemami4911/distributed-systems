@@ -10,8 +10,8 @@ defmodule TwitterWeb.SessionController do
         render conn, "new.html"
     end
 
-    def show(conn, _params) do
-        render conn, "show.html"
+    def show(conn, %{"id" => username}) do
+        render conn, "show.html", username: username
     end
 
     def create(conn, %{"session" => %{"username" => username,
@@ -37,7 +37,6 @@ defmodule TwitterWeb.SessionController do
         case result do
             {:ok, conn} ->
                 conn
-                |> assign(:username, username)
                 #|> put_flash(:info, "You’re now logged in!")
                 |> redirect(to: session_path(conn, :show, username))
             {:error, _reason, conn} ->

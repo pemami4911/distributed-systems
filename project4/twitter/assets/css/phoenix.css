@@ -237,3 +237,4 @@ img {
     border-top-right-radius: 0;
   }
   
+ .list-group-item { word-wrap: break-word;}

@@ -5,8 +5,8 @@ defmodule TwitterWeb.TwitterChannel do
     {:ok, socket}
   end
 
-  def handle_in("new_tweet", %{"body" => body}, socket) do
-    broadcast! socket, "new_tweet", %{body: body}
+  def handle_in("new_tweet", tweet, socket) do
+    broadcast! socket, "new_tweet", tweet
     {:noreply, socket}
   end
 end
