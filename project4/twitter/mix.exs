@@ -19,7 +19,7 @@ defmodule Twitter.Mixfile do
   # Type `mix help compile.app` for more information.
   def application do
     [
-      mod: {Twitter.Application, ["lib/sim/cfg/baseline/1.txt"]},
+      mod: {Twitter.Application, []},
       extra_applications: [:logger, :runtime_tools, :comeonin]
     ]
   end

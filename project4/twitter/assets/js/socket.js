@@ -67,39 +67,88 @@ let chatInput         = document.querySelector("#chat-input")
 let sendTweetButton   = document.querySelector("#send-tweet")
 let followInput       = document.querySelector("#follow-input")
 let followButton      = document.querySelector("#followBtn")
+let searchInput       = document.querySelector("#search-input")
+let searchButton      = document.querySelector("#searchBtn")
+let searchResults     = document.querySelector("#search-results")
+let clearButton       = document.querySelector("#clear-search")
 let messagesContainer = document.querySelector("#messages")
 
 sendTweetButton.addEventListener("click", event => {
   var tweet = chatInput.value;
   if (tweet.length < 280 && tweet != "") {
-    topics[username].push("new_tweet", {body: "@" + username + ": " + tweet})
-    chatInput.value = ""
+    topics[username].push("new_tweet", {body: "@" + username + ": " + tweet});
+    chatInput.value = "";
   }
 })
 
 followButton.addEventListener("click", event => {
   var their_username = followInput.value;
   if (their_username != "" && their_username.length < 32) {
-    topics[their_username] = socket.channel("twitter:" + their_username, {})
-    try {
-      topics[their_username].on("new_tweet", payload => tweetCallback(payload)) 
-    } catch(err) {
-      console.log(err)
-    }  
-    topics[their_username].join()
-      .receive("ok", resp => { console.log("Joined successfully", resp) })
-      .receive("error", resp => { alert("Unable to follow" + their_username) }) 
-    followInput.value = ""
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", "/api/follow/" + their_username, false);
+    xhr.send();
+    if(xhr.responseText == "Avail") {
+      topics[their_username] = socket.channel("twitter:" + their_username, {})
+      try {
+        topics[their_username].on("new_tweet", payload => tweetCallback(payload)) 
+      } catch(err) {
+        console.log(err)
+      }  
+      topics[their_username].join()
+        .receive("ok", resp => { alert("Followed " + their_username + " successfully") })
+        .receive("error", resp => { console.log("Unable to follow " + their_username) }) 
+      followInput.value = ""
+    } else {
+      alert("No user with name " + their_username);
+    }
+  } else {
+    alert("Invalid username");
   }
 })
+
+searchButton.addEventListener("click", event => searchCallback());
+clearButton.addEventListener("click", event => clearCallback());
+
 
 // Some helper funs
 var tweetCallback = function(payload) {
   let messageItem = document.createElement("li");
   messageItem.classList.add("list-group-item");
-  messageItem.innerText = `[${Date().split('GMT')[0].trim()}] ${payload.body}`
-  messagesContainer.appendChild(messageItem)
-  tweets.push(payload.body)
+  messageItem.addEventListener("click", event => retweetCallback(payload.body));
+  messageItem.innerText = `[${Date().split('GMT')[0].trim()}] ${payload.body}`;
+  messagesContainer.appendChild(messageItem);
+  tweets.push(payload.body);
+}
+
+var retweetCallback = function(tweet) {
+  if(confirm("Retweet?")) {
+    console.log("RT " + tweet);
+    topics[username].push("new_tweet", {body: "@" + username + ": (RT ->) " + tweet});    
+  }
+}
+
+var searchCallback = function() {
+  var query = searchInput.value;
+  var numResults = 0;
+  for(var i = 0; i < tweets.length; ++i) {
+    console.log(tweets[i])
+    if (tweets[i].includes(query)) {
+      let searchResultItem = document.createElement("li");
+      searchResultItem.classList.add("list-group-item");
+      searchResultItem.innerText = tweets[i];
+      searchResults.appendChild(searchResultItem);
+      numResults++;
+    }
+  }
+  if(numResults == 0) {
+    alert("Found no matching tweets");
+  }
+}
+
+var clearCallback = function() {
+  while(searchResults.hasChildNodes()) {
+    searchResults.removeChild(searchResults.firstChild);
+  }
 }
 
 export default socket

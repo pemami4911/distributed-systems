@@ -23,19 +23,19 @@ defmodule Twitter.SocketClient do
 
   ## WEBSOCKET CALLBACKS
   def handle_connected(transport, state) do
-    Logger.debug("connecting")
+    #Logger.debug("connecting")
     GenSocketClient.join(transport, "twitter:" <> state[:username])
     {:ok, state}
   end
 
   def handle_disconnected(reason, state) do
     Logger.error("disconnected: #{inspect reason}")
-    Process.send_after(self(), :connect, :timer.seconds(1))
+    #Process.send_after(self(), :connect, :timer.seconds(1))
     {:ok, state}
   end
 
   def handle_joined(topic, _payload, _transport, state) do
-    Logger.info("joined the topic #{topic}")
+    #Logger.info("joined the topic #{topic}")
     {:ok, state}
   end
 
@@ -45,33 +45,32 @@ defmodule Twitter.SocketClient do
   end
 
   def handle_reply("new_tweet", _ref, %{"status" => "ok"} = payload, _transport, state) do
-    Logger.info("server pong #{inspect payload}")
+    #Logger.info("server pong #{inspect payload}")
     {:ok, state}
   end
 
   def handle_reply(topic, _ref, payload, _transport, state) do
-    Logger.warn("reply on topic #{topic}: #{inspect payload}")
+    #Logger.warn("reply on topic #{topic}: #{inspect payload}")
     {:ok, state}
   end
 
   def handle_channel_closed(topic, payload, _transport, state) do
-    Logger.error("disconnected from the topic #{topic}: #{inspect payload}")
+    #Logger.error("disconnected from the topic #{topic}: #{inspect payload}")
     {:ok, state}
   end
 
   def handle_message(topic, event, payload, _transport, state) do
-    Logger.warn("message on topic #{topic}: #{event} #{inspect payload}")
+    #Logger.warn("message on topic #{topic}: #{event} #{inspect payload}")
     display_and_store(payload, state)
     {:ok, state}
   end
 
   def handle_info(:connect, _transport, state) do
-    Logger.info("connecting")
     {:connect, state}
   end
 
   def handle_info({:join, topic}, transport, state) do
-    Logger.info("joining the topic #{topic}")
+    #Logger.info("joining the topic #{topic}")
     case GenSocketClient.join(transport, topic) do
       {:error, reason} ->
         Logger.error("error joining the topic #{topic}: #{inspect reason}")
@@ -144,7 +143,7 @@ defmodule Twitter.SocketClient do
   end
 
   def handle_info(message, _transport, state) do
-    Logger.warn("Unhandled message #{inspect message}")
+    #Logger.warn("Unhandled message #{inspect message}")
     {:ok, state}
   end
   
@@ -167,6 +166,7 @@ defmodule Twitter.SocketClient do
     uid = get_tweet_uid(username, text)
     tweet = %{:author => username, :uid => uid, :body => text}
     GenSocketClient.push(transport, "twitter:" <> username, "new_tweet", tweet)
+    Logger.warn("@" <> username <> ": " <> text)
   end
 
   @doc """

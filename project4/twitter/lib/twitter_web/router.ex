@@ -32,8 +32,6 @@ defmodule TwitterWeb.Router do
     pipe_through :browser # Use the default browser stack
 
     get "/", LoginController, :index
-    get "/hello", HelloController, :index
-    get "/hello/:messenger", HelloController, :show
   end
 
   scope "/api", TwitterWeb do
@@ -41,6 +39,6 @@ defmodule TwitterWeb.Router do
 
     resources "/users", UserController, only: [:show, :new, :create]
     resources "/sessions", SessionController, only: [:show, :new, :create, :delete]
-    post "/follow/:user", FollowController, :show
+    get "/follow/:user", FollowController, :index
   end
 end

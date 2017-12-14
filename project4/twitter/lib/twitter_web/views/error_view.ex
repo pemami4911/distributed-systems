@@ -1,8 +1,8 @@
 defmodule TwitterWeb.ErrorView do
   use TwitterWeb, :view
-
+  
   def render("404.html", _assigns) do
-    "Page not found"
+    render("not_found.html", %{})
   end
 
   def render("500.html", _assigns) do

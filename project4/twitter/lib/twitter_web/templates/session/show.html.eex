@@ -9,9 +9,10 @@
     <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
       <div class="navbar-form navbar-left">
         <div class="form-group">
-          <input type="text" class="form-control" placeholder="Search">
+          <input type="text" class="form-control" placeholder="Search" id="search-input">
         </div>
-        <button type="submit" class="btn btn-default" id="search">Submit</button>
+        <button type="submit" class="btn btn-default" id="searchBtn">Submit</button>
+        <button type="submit" class="btn btn-default" id="clear-search">Clear</button>
       </div>
 
       <div class="navbar-form navbar-left">
@@ -41,11 +42,15 @@
 <div class="modal-body-row">
 
   <div class="col-md-6">
+      <h2>Compose Tweet</h2>
       <textarea class="form-control" id="chat-input" rows="3" placeholder="Compose tweet"></textarea>
       <button type="submit" class="btn btn-default" id="send-tweet">Send Tweet</button>
+      <h2>Search Results</h2>
+      <ul class="list-group" id="search-results"></ul>
   </div>
   <div class="col-md-6">
-    <ul class="list-group" id="messages">
+    <h2>Timeline</h2>
+    <ul class="list-group" id="messages" style="margin-top: 0px">
     </ul>
   </div>
 </div>

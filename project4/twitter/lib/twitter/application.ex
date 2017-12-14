@@ -1,5 +1,6 @@
 defmodule Twitter.Application do
   use Application
+  use Task
 
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
@@ -14,12 +15,13 @@ defmodule Twitter.Application do
       # Start your own worker by calling: Twitter.Worker.start_link(arg1, arg2, arg3)
       #worker(Twitter.SocketClient, []),
     ]
-
-    #Twitter.Sim.init(args) |> String.trim
-    
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Twitter.Supervisor]
+    Task.async(fn -> 
+      :timer.sleep(3000)
+      Twitter.Sim.init(["lib/sim/cfg/user_stress/1.txt"])
+    end)
     Supervisor.start_link(children, opts)
   end
 
