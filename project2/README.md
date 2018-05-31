@@ -2,7 +2,7 @@
 
 ## Team
 
-Patrick Emami (UFID - 70923125)
+Patrick Emami
 
 ## Running
 
